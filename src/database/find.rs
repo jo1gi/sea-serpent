@@ -1,4 +1,5 @@
 use std::path::{PathBuf, Path};
+use super::DatabaseError;
 
 pub const DATABASE_DIR: &'static str = ".sea-serpent";
 
@@ -16,32 +17,36 @@ pub fn contains_database_dir(path: &Path) -> bool {
 }
 
 /// Returns the first parent of `path` containing a database dir
-fn find_database_dir(mut path: &Path) -> Option<PathBuf> {
+fn find_database_dir(mut path: &Path) -> Result<PathBuf, DatabaseError> {
     loop {
         if contains_database_dir(path) {
             let database_dir = path.join(DATABASE_DIR);
-            return Some(database_dir);
+            return Ok(database_dir);
         }
         if let Some(parent) = path.parent() {
             path = parent;
         } else {
-            return None;
+            return Err(DatabaseError::DatabaseNotFound);
         }
     }
 }
 
 /// Returns the path of the nearest database directory from the current path
-pub fn find_database_from_current_dir() -> Option<PathBuf> {
-    if let Ok(current_dir) = std::env::current_dir() {
-        find_database_dir(&current_dir)
-    } else {
-        None
-    }
+pub fn find_database_from_current_dir() -> Result<PathBuf, DatabaseError> {
+    std::env::current_dir()
+        .or(Err(DatabaseError::CurrentDirNotFound))
+        .and_then(|current_dir| find_database_dir(&current_dir))
 }
 
 /// Returns the path of `path` relative to the database root directory
-pub fn path_relative_to_db_root(path: &Path, database_root: &Path) -> Option<PathBuf> {
-    std::fs::canonicalize(path).ok()?
-        .strip_prefix(database_root).ok()
+pub fn path_relative_to_db_root(path: &Path, database_root: &Path) -> Result<PathBuf, DatabaseError> {
+    get_full_path(path)?
+        .strip_prefix(database_root)
+        .or_else(|_| Err(DatabaseError::FileNotFound(path.to_path_buf())))
         .map(|x| x.to_path_buf())
+}
+
+pub fn get_full_path(path: &Path) -> Result<PathBuf, DatabaseError> {
+    std::fs::canonicalize(path)
+        .or(Err(DatabaseError::CurrentDirNotFound))
 }

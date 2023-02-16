@@ -1,9 +1,11 @@
 mod config;
 mod data;
+mod error;
 mod find;
 
 use std::path::{Path, PathBuf};
 pub use find::find_database_from_current_dir;
+pub use error::DatabaseError;
 
 #[derive(Debug)]
 pub struct Database {
@@ -14,20 +16,24 @@ pub struct Database {
 
 impl Database {
 
-    pub fn save(&self) {
-        self.data.save(&self.path);
+    /// Save database to disk
+    pub fn save(&self) -> Result<(), DatabaseError> {
+        self.data.save(&self.path)
     }
 
-    pub fn add_tag(&mut self, file: &Path, tag: &String) {
+    /// Add tag to file
+    pub fn add_tag(&mut self, file: &Path, tag: &String) -> Result<(), DatabaseError> {
         // TODO Remove unwrap
-        let relative_path = find::path_relative_to_db_root(file, &self.root_dir().unwrap())
-            .unwrap();
+        let relative_path = find::path_relative_to_db_root(file, &self.root_dir()?)?;
         self.data.add_tag(&relative_path, &tag);
+        Ok(())
     }
 
 
-    fn root_dir<'a>(&'a self) -> Option<&'a Path> {
+    /// Returns the root directory of the database
+    fn root_dir<'a>(&'a self) -> Result<&'a Path, DatabaseError> {
         self.path.parent()
+            .ok_or(DatabaseError::RootDirNotFound)
     }
 
     /// Creates a new database in `path` directory
@@ -38,22 +44,23 @@ impl Database {
         let database_dir = path.join(find::DATABASE_DIR);
         std::fs::create_dir(&database_dir).ok()?;
         Some(Self {
-            path: std::fs::canonicalize(database_dir).ok()?,
+            path: find::get_full_path(&database_dir).ok()?,
             config: Default::default(),
             data: Default::default(),
         })
     }
 
-    pub fn load(path: PathBuf) -> Option<Self> {
-        Some(Self {
+    /// Load database from disk located in `path`
+    pub fn load(path: PathBuf) -> Result<Self, DatabaseError> {
+        Ok(Self {
             config: config::get_database_config(&path),
             data: data::DatabaseData::load(&path)?,
-            path: std::fs::canonicalize(path).ok()?,
+            path: find::get_full_path(&path)?,
         })
     }
 
     /// Loads the database from the first ancestor with a existing database if any exist
-    pub fn load_from_current_dir() -> Option<Self> {
+    pub fn load_from_current_dir() -> Result<Self, DatabaseError> {
         let path = find_database_from_current_dir()?;
         return Database::load(path);
     }

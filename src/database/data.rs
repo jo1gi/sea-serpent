@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::collections::{BTreeMap, HashSet};
 use serde::{Deserialize, Serialize};
+use super::DatabaseError;
 
 const DATA_FILE: &'static str = "data.json";
 
@@ -20,17 +21,21 @@ fn create_data_path(database_path: &Path) -> PathBuf {
 impl DatabaseData {
 
     /// Load data file from disk
-    pub fn load(database_path: &Path) -> Option<Self> {
+    pub fn load(database_path: &Path) -> Result<Self, DatabaseError> {
         let data_path = create_data_path(database_path);
-        let raw_data = std::fs::read_to_string(data_path).ok()?;
-        return serde_json::from_str(&raw_data).ok();
+        let raw_data = std::fs::read_to_string(&data_path)
+            .or_else(move |_| Err(DatabaseError::ReadFromDisk(data_path)))?;
+        return serde_json::from_str(&raw_data)
+            .or(Err(DatabaseError::DatabaseNotFormattedCorrect));
     }
 
     /// Save data file to disk
-    pub fn save(&self, database_path: &Path) {
+    pub fn save(&self, database_path: &Path) -> Result<(), DatabaseError> {
         let data_path = create_data_path(database_path);
         let raw_data = serde_json::to_string(self).unwrap();
-        std::fs::write(data_path, raw_data);
+        std::fs::write(&data_path, raw_data)
+            .or_else(move |_| Err(DatabaseError::WriteToDisk(data_path)))?;
+        Ok(())
     }
 
     /// Add tag to file
