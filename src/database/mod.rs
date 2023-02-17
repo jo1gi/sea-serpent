@@ -28,6 +28,7 @@ impl Database {
         // TODO Remove unwrap
         let relative_path = find::path_relative_to_db_root(file, &self.root_dir()?)?;
         self.data.add_tag(&relative_path, &tag);
+        log::debug!("Added tag {} to {:?}", tag, relative_path);
         Ok(())
     }
 

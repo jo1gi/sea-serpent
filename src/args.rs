@@ -3,6 +3,9 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 pub struct Arguments {
+    /// Logging level
+    #[structopt(short, long, default_value="info", global = true)]
+    pub log_level: log::LevelFilter,
     /// Subcommand
     #[structopt(subcommand)]
     pub command: Command,

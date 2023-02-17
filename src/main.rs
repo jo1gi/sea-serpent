@@ -1,5 +1,6 @@
 mod args;
 mod database;
+mod logging;
 mod search;
 mod utils;
 
@@ -16,10 +17,13 @@ pub enum SeaSerpentError {
     Database(#[from] database::DatabaseError),
     /// {0}
     Search(#[from] search::SearchError),
+    /// {0}
+    Logging(#[from] fern::InitError),
 }
 
 fn main() -> Result<(), SeaSerpentError> {
     let args = args::Arguments::from_args();
+    logging::setup_logger(args.log_level)?;
     match args.command {
         Command::Add(add_args) => add_tags(&add_args),
         Command::Init => initialize_database(),
@@ -50,6 +54,7 @@ fn initialize_database() -> Result<(), SeaSerpentError> {
     let current_dir = std::env::current_dir().unwrap();
     let db = database::Database::init(&current_dir).unwrap();
     db.save()?;
+    log::info!("Created new database");
     Ok(())
 }
 
@@ -58,8 +63,8 @@ fn search(args: &SearchArgs) -> Result<(), SeaSerpentError> {
     let database = database::Database::load_from_current_dir()?;
     let joined = args.search_terms.join(" ");
     let search_expr = search::parse(&joined)?;
-    println!("Search: {:#?}", search_expr);
+    log::debug!("Search: {:#?}", search_expr);
     let results = database.search(search_expr);
-    println!("Results: {:#?}", results);
+    log::info!("Results: {:#?}", results);
     Ok(())
 }
