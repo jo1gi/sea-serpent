@@ -22,6 +22,8 @@ pub enum Command {
 pub struct AddArgs {
     #[structopt(short, long)]
     pub tag: String,
+    #[structopt(short, long)]
+    pub recursive: bool,
     pub files: Vec<PathBuf>,
 }
 

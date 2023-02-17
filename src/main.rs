@@ -28,16 +28,24 @@ fn main() -> Result<(), SeaSerpentError> {
     Ok(())
 }
 
+/// Add new tags to database
 fn add_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
     for file in &args.files {
-        database.add_tag(&file, &args.tag)?;
+        if args.recursive {
+            for f in utils::files::get_files_recursive(file) {
+                database.add_tag(&f, &args.tag)?;
+            }
+        } else {
+            database.add_tag(&file, &args.tag)?;
+        }
     }
     println!("{:#?}", database);
     database.save()?;
     Ok(())
 }
 
+/// Create new database in current dir
 fn initialize_database() -> Result<(), SeaSerpentError> {
     let current_dir = std::env::current_dir().unwrap();
     let db = database::Database::init(&current_dir).unwrap();
@@ -45,6 +53,7 @@ fn initialize_database() -> Result<(), SeaSerpentError> {
     Ok(())
 }
 
+/// Search for files in database
 fn search(args: &SearchArgs) -> Result<(), SeaSerpentError> {
     let database = database::Database::load_from_current_dir()?;
     let joined = args.search_terms.join(" ");
