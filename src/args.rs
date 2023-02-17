@@ -14,6 +14,8 @@ pub enum Command {
     Add(AddArgs),
     /// Initialize new database in current directory
     Init,
+    /// Search in database
+    Search(SearchArgs),
 }
 
 #[derive(StructOpt)]
@@ -21,4 +23,9 @@ pub struct AddArgs {
     #[structopt(short, long)]
     pub tag: String,
     pub files: Vec<PathBuf>,
+}
+
+#[derive(StructOpt)]
+pub struct SearchArgs {
+    pub search_terms: Vec<String>,
 }

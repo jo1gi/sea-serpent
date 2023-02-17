@@ -2,15 +2,17 @@ mod config;
 mod data;
 mod error;
 mod find;
+mod search;
 
 use std::path::{Path, PathBuf};
 pub use find::find_database_from_current_dir;
 pub use error::DatabaseError;
+pub use search::DatabaseResult;
 
 #[derive(Debug)]
 pub struct Database {
     path: PathBuf,
-    config: config::DatabaseConfig,
+    _config: config::DatabaseConfig,
     data: data::DatabaseData,
 }
 
@@ -45,7 +47,7 @@ impl Database {
         std::fs::create_dir(&database_dir).ok()?;
         Some(Self {
             path: find::get_full_path(&database_dir).ok()?,
-            config: Default::default(),
+            _config: Default::default(),
             data: Default::default(),
         })
     }
@@ -53,7 +55,7 @@ impl Database {
     /// Load database from disk located in `path`
     pub fn load(path: PathBuf) -> Result<Self, DatabaseError> {
         Ok(Self {
-            config: config::get_database_config(&path),
+            _config: config::get_database_config(&path),
             data: data::DatabaseData::load(&path)?,
             path: find::get_full_path(&path)?,
         })

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::collections::{BTreeMap, HashSet};
 use serde::{Deserialize, Serialize};
-use super::DatabaseError;
+use super::{Database, DatabaseError};
 
 const DATA_FILE: &'static str = "data.json";
 
@@ -48,6 +48,16 @@ impl DatabaseData {
         }
         self.files.get_mut(file).unwrap().insert(tag.clone());
         self.tags.get_mut(tag).unwrap().insert(file.to_path_buf());
+    }
+
+}
+
+type ReturnFiles<'a> = std::collections::btree_map::Iter<'a, PathBuf, HashSet<String>>;
+
+impl Database {
+
+    pub fn get_files<'a>(&'a self) -> ReturnFiles {
+        self.data.files.iter()
     }
 
 }
