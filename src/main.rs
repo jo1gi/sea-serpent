@@ -35,14 +35,8 @@ fn main() -> Result<(), SeaSerpentError> {
 /// Add new tags to database
 fn add_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
-    for file in &args.files {
-        if args.recursive {
-            for f in utils::files::get_files_recursive(file) {
-                database.add_tag(&f, &args.tag)?;
-            }
-        } else {
-            database.add_tag(&file, &args.tag)?;
-        }
+    for file in utils::files::get_files(&args.files, args.into()) {
+        database.add_tag(&file, &args.tag)?;
     }
     println!("{:#?}", database);
     database.save()?;

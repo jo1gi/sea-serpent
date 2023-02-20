@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
+use crate::utils::files::{FileSearchSettings, FiletypeFilter};
 
 #[derive(StructOpt)]
 pub struct Arguments {
@@ -27,7 +28,26 @@ pub struct AddArgs {
     pub tag: String,
     #[structopt(short, long)]
     pub recursive: bool,
+    #[structopt(long)]
+    pub exclude_dirs: bool,
+    #[structopt(long)]
+    pub exclude_files: bool,
     pub files: Vec<PathBuf>,
+}
+
+impl Into<FileSearchSettings> for &AddArgs {
+    fn into(self) -> FileSearchSettings {
+        FileSearchSettings {
+            recursive: self.recursive,
+            filetype_filter: if self.exclude_dirs {
+                FiletypeFilter::FilesOnly
+            } else if self.exclude_files {
+                FiletypeFilter::FoldersOnly
+            }else {
+                FiletypeFilter::All
+            },
+        }
+    }
 }
 
 #[derive(StructOpt)]
