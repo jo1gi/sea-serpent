@@ -37,6 +37,7 @@ fn match_search_query(tags: &HashSet<String>, search_term: &SearchExpression) ->
             match op_type {
                 UnaryOp::Not => !match_search_query(tags, &expr)
             }
-        }
+        },
+        SearchExpression::Empty => true
     }
 }

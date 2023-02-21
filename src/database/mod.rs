@@ -56,7 +56,7 @@ impl Database {
 
 
     /// Returns the root directory of the database
-    fn root_dir<'a>(&'a self) -> Result<&'a Path, DatabaseError> {
+    fn root_dir(&self) -> Result<&Path, DatabaseError> {
         self.path.parent()
             .ok_or(DatabaseError::RootDirNotFound)
     }

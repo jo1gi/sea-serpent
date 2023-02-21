@@ -15,6 +15,7 @@ pub enum ParseError {
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
+    Empty,
     Tag(String),
     BinaryOp {
         left: Box<Expression>,
@@ -38,6 +39,9 @@ pub enum UnaryOp {
 }
 
 pub fn parse(tokens: Vec<LexItem>) -> Result<Expression, ParseError> {
+    if tokens.is_empty() {
+        return Ok(Expression::Empty);
+    }
     let mut iter = tokens.into_iter().peekable();
     parse_next(&mut iter)
 }
