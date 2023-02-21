@@ -5,13 +5,18 @@ use super::Database;
 use std::path::PathBuf;
 use std::collections::HashSet;
 
-pub type DatabaseResult<'a> = (&'a PathBuf, &'a HashSet<String>);
+#[derive(serde::Serialize)]
+pub struct SearchResult<'a> {
+    pub path: &'a PathBuf,
+    pub tags: &'a HashSet<String>,
+}
 
 impl Database {
 
-    pub fn search(&self, search_term: SearchExpression) -> Vec<DatabaseResult> {
+    pub fn search(&self, search_term: SearchExpression) -> Vec<SearchResult> {
         self.get_files()
             .filter(|(_path, tags)| match_search_query(tags, &search_term))
+            .map(|(path, tags)| SearchResult { path, tags })
             .collect()
     }
 

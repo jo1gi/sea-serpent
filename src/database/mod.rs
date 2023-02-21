@@ -7,7 +7,7 @@ mod search;
 use std::path::{Path, PathBuf};
 pub use find::find_database_from_current_dir;
 pub use error::DatabaseError;
-pub use search::DatabaseResult;
+pub use search::SearchResult;
 
 #[derive(Debug)]
 pub struct Database {

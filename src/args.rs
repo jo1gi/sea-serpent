@@ -52,5 +52,16 @@ impl Into<FileSearchSettings> for &AddArgs {
 
 #[derive(StructOpt)]
 pub struct SearchArgs {
+    /// Print results as json
+    #[structopt(long)]
+    pub json: bool,
     pub search_terms: Vec<String>,
+}
+
+impl Into<crate::logging::SearchPrintOptions> for &SearchArgs {
+    fn into(self) -> crate::logging::SearchPrintOptions {
+        crate::logging::SearchPrintOptions {
+            json: self.json
+        }
+    }
 }

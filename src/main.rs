@@ -18,7 +18,7 @@ pub enum SeaSerpentError {
     /// {0}
     Search(#[from] search::SearchError),
     /// {0}
-    Logging(#[from] fern::InitError),
+    Logging(#[from] logging::SeaSerpentLoggingError),
 }
 
 fn main() -> Result<(), SeaSerpentError> {
@@ -59,6 +59,6 @@ fn search(args: &SearchArgs) -> Result<(), SeaSerpentError> {
     let search_expr = search::parse(&joined)?;
     log::debug!("Search: {:#?}", search_expr);
     let results = database.search(search_expr);
-    log::info!("Results: {:#?}", results);
+    logging::print_search_result(&results, args.into())?;
     Ok(())
 }
