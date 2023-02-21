@@ -12,7 +12,7 @@ pub use search::SearchResult;
 #[derive(Debug)]
 pub struct Database {
     path: PathBuf,
-    _config: config::DatabaseConfig,
+    config: config::DatabaseConfig,
     data: data::DatabaseData,
 }
 
@@ -25,10 +25,15 @@ impl Database {
 
     /// Add tag to file
     pub fn add_tag(&mut self, file: &Path, tag: &String) -> Result<(), DatabaseError> {
-        // TODO Remove unwrap
         let relative_path = find::path_relative_to_db_root(file, &self.root_dir()?)?;
-        self.data.add_tag(&relative_path, &tag);
-        log::debug!("Added tag {} to {:?}", tag, relative_path);
+        self.config.get_alias(tag)
+            .unwrap_or_else(|| vec![tag])
+            .iter()
+            .filter(|tag| self.config.tag_allowed(tag))
+            .for_each(|tag| {
+                log::debug!("Adding tag: {}", tag);
+                self.data.add_tag(&relative_path, &tag);
+            });
         Ok(())
     }
 
@@ -48,7 +53,7 @@ impl Database {
         std::fs::create_dir(&database_dir).ok()?;
         Some(Self {
             path: find::get_full_path(&database_dir).ok()?,
-            _config: Default::default(),
+            config: Default::default(),
             data: Default::default(),
         })
     }
@@ -56,7 +61,7 @@ impl Database {
     /// Load database from disk located in `path`
     pub fn load(path: PathBuf) -> Result<Self, DatabaseError> {
         Ok(Self {
-            _config: config::get_database_config(&path),
+            config: config::get_database_config(&path),
             data: data::DatabaseData::load(&path)?,
             path: find::get_full_path(&path)?,
         })
