@@ -18,6 +18,10 @@ pub enum LexItem {
     Not,
 }
 
+const SPECIAL_CHARS: &[char] = &[
+    ' ', '(', ')', ','
+];
+
 pub fn lex(input: &str) -> Result<Vec<LexItem>, LexError> {
     let mut result = Vec::new();
 
@@ -26,6 +30,7 @@ pub fn lex(input: &str) -> Result<Vec<LexItem>, LexError> {
         let item = match c {
             '(' => { it.next(); Some(LexItem::StartParen) },
             ')' => { it.next(); Some(LexItem::EndParen) },
+            ',' => { it.next(); Some(LexItem::Or) },
             ' ' => { it.next(); None },
             _  => {
                 let word = get_word(&mut it);
@@ -47,13 +52,19 @@ pub fn lex(input: &str) -> Result<Vec<LexItem>, LexError> {
 
 fn get_word<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> String {
     let mut quoted_string = false;
-    iter.take_while(|c| {
-        if *c == '"' {
-            quoted_string = !quoted_string;
+    let mut output = String::new();
+    while let Some(c) = iter.peek() {
+        if SPECIAL_CHARS.contains(c) && !quoted_string {
+            break
         }
-        (*c != ' ' && *c != '(' && *c != ')') || quoted_string
-    }).filter(|c| *c != '"')
-        .collect()
+        let c = iter.next().unwrap();
+        if c == '"' {
+            quoted_string = !quoted_string;
+        } else {
+            output.push(c);
+        }
+    }
+    return output;
 }
 
 #[cfg(test)]
@@ -75,7 +86,7 @@ mod test {
     #[test]
     fn lex_word() {
         assert_eq!(
-            lex("word").unwrap(), vec![LexItem::Tag("word".to_string())]
+            lex("word").unwrap(), vec![LexItem::tag("word")]
         )
     }
 
@@ -93,10 +104,18 @@ mod test {
     }
 
     #[test]
-    fn lex_or() {
+    fn lex_or_explicit() {
         assert_eq!(
             lex("A or B").unwrap(),
-            vec![LexItem::Tag("A".to_string()), LexItem::Or, LexItem::Tag("B".to_string())]
+            vec![LexItem::tag("A"), LexItem::Or, LexItem::tag("B")]
+        )
+    }
+
+    #[test]
+    fn lex_or_with_comma() {
+        assert_eq!(
+            lex("A, B").unwrap(),
+            vec![LexItem::tag("A"), LexItem::Or, LexItem::tag("B")]
         )
     }
 
