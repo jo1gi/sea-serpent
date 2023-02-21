@@ -31,10 +31,27 @@ impl Database {
             .iter()
             .filter(|tag| self.config.tag_allowed(tag))
             .for_each(|tag| {
-                log::debug!("Adding tag: {}", tag);
+                log::debug!("Adding tag {} to {}", tag, file.display());
                 self.data.add_tag(&relative_path, &tag);
             });
         Ok(())
+    }
+
+    /// Remove tag from file
+    pub fn remove_tag(&mut self, file: &Path, tag: &String) -> Result<(), DatabaseError> {
+        let relative_path = find::path_relative_to_db_root(file, &self.root_dir()?)?;
+        self.config.get_alias(tag)
+            .unwrap_or_else(|| vec![tag])
+            .iter()
+            .for_each(|tag| {
+                log::debug!("Removing tag {} from {}", tag, file.display());
+                self.data.remove_tag(&relative_path, &tag);
+            });
+        Ok(())
+    }
+
+    pub fn remove_tag_from_all(&mut self, tag: &String) {
+        self.data.remove_tag_from_all(tag);
     }
 
 

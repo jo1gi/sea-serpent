@@ -27,18 +27,33 @@ fn main() -> Result<(), SeaSerpentError> {
     match args.command {
         Command::Add(add_args) => add_tags(&add_args),
         Command::Init => initialize_database(),
+        Command::Remove(remove_args) => remove_tags(&remove_args),
         Command::Search(search_args) => search(&search_args),
     }?;
     Ok(())
 }
 
-/// Add new tags to database
+/// Add new tags to files
 fn add_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
     for file in utils::files::get_files(&args.files, args.into()) {
         database.add_tag(&file, &args.tag)?;
     }
-    println!("{:#?}", database);
+    database.save()?;
+    Ok(())
+}
+
+/// Remove tags from files
+fn remove_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
+    let mut database = database::Database::load_from_current_dir()?;
+    // TODO: Find better way to remove all
+    if args.files.is_empty() {
+        database.remove_tag_from_all(&args.tag)
+    } else {
+        for file in utils::files::get_files(&args.files, args.into()) {
+            database.remove_tag(&file, &args.tag)?;
+        }
+    }
     database.save()?;
     Ok(())
 }

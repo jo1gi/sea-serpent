@@ -18,6 +18,8 @@ pub enum Command {
     Add(AddArgs),
     /// Initialize new database in current directory
     Init,
+    /// Remove tag from files
+    Remove(AddArgs),
     /// Search in database
     Search(SearchArgs),
 }

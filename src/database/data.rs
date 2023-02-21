@@ -11,7 +11,6 @@ type File = PathBuf;
 #[derive(Default, Debug, Deserialize, Serialize)]
 pub struct DatabaseData {
     files: BTreeMap<File, HashSet<Tag>>,
-    tags: BTreeMap<Tag, HashSet<File>>,
 }
 
 fn create_data_path(database_path: &Path) -> PathBuf {
@@ -43,11 +42,21 @@ impl DatabaseData {
         if !self.files.contains_key(file) {
             self.files.insert(file.to_path_buf(), HashSet::new());
         }
-        if !self.tags.contains_key(tag) {
-            self.tags.insert(tag.clone(), HashSet::new());
-        }
         self.files.get_mut(file).unwrap().insert(tag.clone());
-        self.tags.get_mut(tag).unwrap().insert(file.to_path_buf());
+    }
+
+    /// Remove tag from file
+    pub fn remove_tag(&mut self, file: &Path, tag: &Tag) {
+        if let Some(file_tags) = self.files.get_mut(file) {
+            file_tags.remove(tag);
+        }
+    }
+
+    pub fn remove_tag_from_all(&mut self, tag: &Tag) {
+        for (path, file_tags) in &mut self.files {
+            log::debug!("Removing tag {} from {}", tag, path.display());
+            file_tags.remove(tag);
+        }
     }
 
 }
