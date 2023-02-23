@@ -32,7 +32,10 @@ impl Database {
             .filter(|tag| self.config.tag_allowed(tag))
             .for_each(|tag| {
                 log::debug!("Adding tag {} to {}", tag, file.display());
-                self.data.add_tag(&relative_path, &tag);
+                match get_attribute(&tag) {
+                    None => self.data.add_tag(&relative_path, &tag),
+                    Some((key, value)) => self.data.add_attribute(&relative_path, key, value)
+                }
             });
         Ok(())
     }
@@ -90,4 +93,14 @@ impl Database {
 /// Returns true if `path` is valid to be the root of a new database
 fn is_valid_init_dir(path: &Path) -> bool {
     path.is_dir() && !find::contains_database_dir(path)
+}
+
+fn get_attribute(tag: &str) -> Option<(String, String)> {
+    let mut iter = tag.split(":");
+    let key = iter.next();
+    if key.is_none() {
+        return None;
+    }
+    let value = iter.collect();
+    return Some((key.unwrap().to_string(), value));
 }

@@ -17,6 +17,10 @@ pub enum ParseError {
 pub enum Expression {
     Empty,
     Tag(String),
+    Attribute {
+        key: Option<String>,
+        value: Option<String>
+    },
     BinaryOp {
         left: Box<Expression>,
         right: Box<Expression>,
@@ -52,10 +56,11 @@ type Tokens = Peekable<std::vec::IntoIter<LexItem>>;
 pub fn parse_next(iter: &mut Tokens) -> Result<Expression, ParseError> {
     let current = iter.next().ok_or(ParseError::UnexpectedEndOfInput)?;
     match current {
-        LexItem::Tag(s) => parse_expr(Expression::Tag(s.clone()), iter),
+        LexItem::Word(s) => parse_word(s.clone(), iter),
         LexItem::Not => parse_unary(UnaryOp::Not, iter),
         LexItem::Or | LexItem::EndParen => Err(ParseError::UnexpectedToken),
         LexItem::StartParen => parse_paren(iter),
+        LexItem::AttributeSeperator => parse_attribute(None, iter),
     }
 }
 
@@ -77,6 +82,15 @@ fn parse_expr(expr: Expression, iter: &mut Tokens) -> Result<Expression, ParseEr
     }
 }
 
+fn parse_word(word: String, iter: &mut Tokens) -> Result<Expression, ParseError> {
+    if let Some(LexItem::AttributeSeperator) = iter.peek() {
+        iter.next();
+        parse_attribute(Some(word), iter)
+    } else {
+        parse_expr(Expression::Tag(word.clone()), iter)
+    }
+}
+
 fn parse_paren(iter: &mut Tokens) -> Result<Expression, ParseError> {
     let inner_expr = parse_next(iter)?;
     iter.next();
@@ -88,6 +102,21 @@ fn parse_unary(op_type: UnaryOp, iter: &mut Tokens) -> Result<Expression, ParseE
         expr: Box::new(parse_next(iter)?),
         op_type
     })
+}
+
+fn parse_attribute(key: Option<String>, iter: &mut Tokens) -> Result<Expression, ParseError> {
+    let next = iter.peek();
+    let value = if let Some(LexItem::Word(value)) = next {
+        Some(value.clone())
+    } else {
+        None
+    };
+    if value.is_some() || key.is_some() {
+        iter.next();
+        parse_expr(Expression::Attribute { key, value }, iter)
+    } else {
+        parse_next(iter)
+    }
 }
 
 #[cfg(test)]
@@ -103,7 +132,7 @@ mod test {
     #[test]
     fn single_tag() {
         assert_eq!(
-            parse(vec![LexItem::tag("tag")]).unwrap(),
+            parse(vec![LexItem::word("tag")]).unwrap(),
             Expression::tag("tag")
         )
     }
@@ -111,7 +140,7 @@ mod test {
     #[test]
     fn two_tags() {
         assert_eq!(
-            parse(vec![LexItem::tag("A"), LexItem::tag("B")]).unwrap(),
+            parse(vec![LexItem::word("A"), LexItem::word("B")]).unwrap(),
             Expression::BinaryOp{
                 left: Box::new(Expression::tag("A")),
                 right: Box::new(Expression::tag("B")),
@@ -123,7 +152,7 @@ mod test {
     #[test]
     fn or() {
         assert_eq!(
-            parse(vec![LexItem::tag("A"), LexItem::Or, LexItem::tag("B")]).unwrap(),
+            parse(vec![LexItem::word("A"), LexItem::Or, LexItem::word("B")]).unwrap(),
             Expression::BinaryOp{
                 left: Box::new(Expression::tag("A")),
                 right: Box::new(Expression::tag("B")),
@@ -135,7 +164,7 @@ mod test {
     #[test]
     fn paren() {
         assert_eq!(
-            parse(vec![LexItem::StartParen, LexItem::tag("tag"), LexItem::EndParen]).unwrap(),
+            parse(vec![LexItem::StartParen, LexItem::word("tag"), LexItem::EndParen]).unwrap(),
             Expression::tag("tag")
         )
     }
@@ -144,7 +173,7 @@ mod test {
     fn paren_with_trailing() {
         assert_eq!(
             parse(vec![
-                LexItem::StartParen, LexItem::tag("A"), LexItem::EndParen, LexItem::tag("B")
+                LexItem::StartParen, LexItem::word("A"), LexItem::EndParen, LexItem::word("B")
             ]).unwrap(),
             Expression::BinaryOp{
                 left: Box::new(Expression::tag("A")),
@@ -157,10 +186,21 @@ mod test {
     #[test]
     fn not() {
         assert_eq!(
-            parse(vec![LexItem::Not, LexItem::tag("tag")]).unwrap(),
+            parse(vec![LexItem::Not, LexItem::word("tag")]).unwrap(),
             Expression::UnaryOp{
                 expr: Box::new(Expression::tag("tag")),
                 op_type: super::UnaryOp::Not
+            }
+        )
+    }
+
+    #[test]
+    fn attribute() {
+        assert_eq!(
+            parse(vec![LexItem::word("key"), LexItem::AttributeSeperator, LexItem::word("value")]).unwrap(),
+            Expression::Attribute {
+                key: Some("key".to_string()),
+                value: Some("value".to_string())
             }
         )
     }

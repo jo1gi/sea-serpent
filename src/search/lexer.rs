@@ -11,7 +11,8 @@ pub enum LexError {
 
 #[derive(Debug, PartialEq)]
 pub enum LexItem {
-    Tag(String),
+    Word(String),
+    AttributeSeperator,
     StartParen,
     EndParen,
     Or,
@@ -19,7 +20,7 @@ pub enum LexItem {
 }
 
 const SPECIAL_CHARS: &[char] = &[
-    ' ', '(', ')', ','
+    ' ', '(', ')', ',', ':'
 ];
 
 pub fn lex(input: &str) -> Result<Vec<LexItem>, LexError> {
@@ -31,6 +32,7 @@ pub fn lex(input: &str) -> Result<Vec<LexItem>, LexError> {
             '(' => { it.next(); Some(LexItem::StartParen) },
             ')' => { it.next(); Some(LexItem::EndParen) },
             ',' => { it.next(); Some(LexItem::Or) },
+            ':' => { it.next(); Some(LexItem::AttributeSeperator) },
             ' ' => { it.next(); None },
             _  => {
                 let word = get_word(&mut it);
@@ -38,7 +40,7 @@ pub fn lex(input: &str) -> Result<Vec<LexItem>, LexError> {
                     "or" => Some(LexItem::Or),
                     "not" => Some(LexItem::Not),
                     "and" => None,
-                    _ => Some(LexItem::Tag(word)),
+                    _ => Some(LexItem::Word(word)),
                 }
             },
         };
@@ -72,8 +74,8 @@ mod test {
     use super::{get_word, lex, LexItem};
 
     impl LexItem {
-        pub fn tag(s: &str) -> Self {
-            Self::Tag(s.to_string())
+        pub fn word(s: &str) -> Self {
+            Self::Word(s.to_string())
         }
     }
 
@@ -86,7 +88,7 @@ mod test {
     #[test]
     fn lex_word() {
         assert_eq!(
-            lex("word").unwrap(), vec![LexItem::tag("word")]
+            lex("word").unwrap(), vec![LexItem::word("word")]
         )
     }
 
@@ -95,9 +97,9 @@ mod test {
         assert_eq!(
             lex("word (word)").unwrap(),
             vec![
-                LexItem::Tag("word".to_string()),
+                LexItem::Word("word".to_string()),
                 LexItem::StartParen,
-                LexItem::Tag("word".to_string()),
+                LexItem::Word("word".to_string()),
                 LexItem::EndParen,
             ]
         )
@@ -107,7 +109,7 @@ mod test {
     fn lex_or_explicit() {
         assert_eq!(
             lex("A or B").unwrap(),
-            vec![LexItem::tag("A"), LexItem::Or, LexItem::tag("B")]
+            vec![LexItem::word("A"), LexItem::Or, LexItem::word("B")]
         )
     }
 
@@ -115,7 +117,7 @@ mod test {
     fn lex_or_with_comma() {
         assert_eq!(
             lex("A, B").unwrap(),
-            vec![LexItem::tag("A"), LexItem::Or, LexItem::tag("B")]
+            vec![LexItem::word("A"), LexItem::Or, LexItem::word("B")]
         )
     }
 
