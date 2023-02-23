@@ -52,13 +52,6 @@ impl DatabaseData {
         }
     }
 
-    pub fn remove_tag_from_all(&mut self, tag: &Tag) {
-        for (path, file_tags) in &mut self.files {
-            log::debug!("Removing tag {} from {}", tag, path.display());
-            file_tags.remove(tag);
-        }
-    }
-
 }
 
 type ReturnFiles<'a> = std::collections::btree_map::Iter<'a, PathBuf, HashSet<String>>;

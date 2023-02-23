@@ -50,11 +50,6 @@ impl Database {
         Ok(())
     }
 
-    pub fn remove_tag_from_all(&mut self, tag: &String) {
-        self.data.remove_tag_from_all(tag);
-    }
-
-
     /// Returns the root directory of the database
     fn root_dir(&self) -> Result<&Path, DatabaseError> {
         self.path.parent()
