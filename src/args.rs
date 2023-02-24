@@ -16,6 +16,8 @@ pub struct Arguments {
 pub enum Command {
     /// Add tag to files
     Add(AddArgs),
+    /// Print information about file
+    Info(InfoArgs),
     /// Initialize new database in current directory
     Init,
     /// Remove tag from files
@@ -53,6 +55,11 @@ impl Into<FileSearchSettings> for &AddArgs {
 }
 
 #[derive(StructOpt)]
+pub struct InfoArgs {
+    pub files: Vec<PathBuf>,
+}
+
+#[derive(StructOpt)]
 pub struct SearchArgs {
     /// Print results as json
     #[structopt(long)]
@@ -62,13 +69,17 @@ pub struct SearchArgs {
     /// Print absolute path instead of relative
     #[structopt(long)]
     pub absolute_path: bool,
+    /// Print more information about a file
+    #[structopt(long)]
+    pub info: bool,
     pub search_terms: Vec<String>,
 }
 
 impl Into<crate::logging::SearchPrintOptions> for &SearchArgs {
     fn into(self) -> crate::logging::SearchPrintOptions {
         crate::logging::SearchPrintOptions {
-            json: self.json
+            json: self.json,
+            info: self.info,
         }
     }
 }

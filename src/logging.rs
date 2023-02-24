@@ -39,20 +39,38 @@ fn create_prefix(level: Level, target: &str) -> Option<String> {
 }
 
 pub struct SearchPrintOptions {
-    pub json: bool
+    pub json: bool,
+    pub info: bool,
 }
 
-pub fn print_search_result(results: &Vec<SearchResult>, options: SearchPrintOptions) -> Result<(), SeaSerpentLoggingError> {
+pub fn print_search_results(results: &Vec<SearchResult>, options: SearchPrintOptions) -> Result<(), SeaSerpentLoggingError> {
     if options.json {
         println!("{}", serde_json::to_string_pretty(results)?);
     } else {
-        print_search_result_simple(results);
+        print_search_result_simple(results, &options);
     }
     Ok(())
 }
 
-fn print_search_result_simple(results: &Vec<SearchResult>) {
+fn print_search_result_simple(results: &Vec<SearchResult>, options: &SearchPrintOptions) {
     for result in results {
-        println!("{}", result.path.display());
+        if options.info {
+            print_result_descriptive(result)
+        } else {
+            println!("{}", result.path.display());
+        }
     }
+}
+
+pub fn print_result_descriptive(result: &SearchResult) {
+    println!("{}", result.path.to_string_lossy().underline());
+    for (key, values) in result.attributes {
+        for value in values {
+            println!("{key}: {value}")
+        }
+    }
+    for tag in result.tags {
+        println!("- {tag}");
+    }
+    println!("");
 }

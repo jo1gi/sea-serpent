@@ -4,7 +4,7 @@ mod logging;
 mod search;
 mod utils;
 
-use args::{Command, AddArgs, SearchArgs};
+use args::{Command, AddArgs, InfoArgs, SearchArgs};
 use structopt::StructOpt;
 
 use thiserror::Error;
@@ -26,6 +26,7 @@ fn main() -> Result<(), SeaSerpentError> {
     logging::setup_logger(args.log_level)?;
     match args.command {
         Command::Add(add_args) => add_tags(&add_args),
+        Command::Info(info_args) => print_info(&info_args),
         Command::Init => initialize_database(),
         Command::Remove(remove_args) => remove_tags(&remove_args),
         Command::Search(search_args) => search(&search_args),
@@ -53,6 +54,16 @@ fn remove_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     Ok(())
 }
 
+/// Print info about files
+fn print_info(args: &InfoArgs) -> Result<(), SeaSerpentError> {
+    let database = database::Database::load_from_current_dir()?;
+    for file in &args.files {
+        let file_info = database.get_file_info(file)?;
+        logging::print_result_descriptive(&file_info);
+    }
+    Ok(())
+}
+
 /// Create new database in current dir
 fn initialize_database() -> Result<(), SeaSerpentError> {
     let current_dir = std::env::current_dir().unwrap();
@@ -73,6 +84,6 @@ fn search(args: &SearchArgs) -> Result<(), SeaSerpentError> {
     if let Some(search_by_key) = &args.sort_by {
         database::sort_by_attribute(&mut results, &search_by_key);
     }
-    logging::print_search_result(&results, args.into())?;
+    logging::print_search_results(&results, args.into())?;
     Ok(())
 }

@@ -73,6 +73,10 @@ impl DatabaseData {
         self.files.iter()
     }
 
+    pub fn get_file(&self, file: &Path) -> Option<(&File, &FileData)> {
+        self.files.get_key_value(file)
+    }
+
 }
 
 type ReturnFiles<'a> = std::collections::hash_map::Iter<'a, PathBuf, FileData>;
@@ -80,9 +84,7 @@ type ReturnFiles<'a> = std::collections::hash_map::Iter<'a, PathBuf, FileData>;
 /// Store tags and attributes for a file
 #[derive(Default, Debug, Deserialize, Serialize)]
 pub struct FileData {
-    #[serde(rename = "t")]
     pub tags: HashSet<Tag>,
-    #[serde(rename = "a")]
     pub attributes: HashMap<String, Vec<String>>,
 }
 

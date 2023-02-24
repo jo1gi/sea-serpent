@@ -2,7 +2,7 @@ use crate::search::{SearchExpression, UnaryOp, BinaryOp};
 
 use super::{Database, data::FileData};
 
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::collections::{HashSet, HashMap};
 
 #[derive(serde::Serialize)]
@@ -23,6 +23,17 @@ impl Database {
                 attributes: &filedata.attributes
             })
             .collect()
+    }
+
+    pub fn get_file_info(&self, file: &Path) -> Result<SearchResult, super::DatabaseError> {
+        let relative_path = super::find::path_relative_to_db_root(file, &self.root_dir()?)?;
+        self.data.get_file(&relative_path)
+            .map(|(path, filedata)| SearchResult {
+                path,
+                tags: &filedata.tags,
+                attributes: &filedata.attributes,
+            })
+            .ok_or_else(|| super::DatabaseError::FileNotFound(file.to_path_buf()))
     }
 
 }
