@@ -57,6 +57,11 @@ pub struct SearchArgs {
     /// Print results as json
     #[structopt(long)]
     pub json: bool,
+    #[structopt(long)]
+    pub sort_by: Option<String>,
+    /// Print absolute path instead of relative
+    #[structopt(long)]
+    pub absolute_path: bool,
     pub search_terms: Vec<String>,
 }
 

@@ -7,7 +7,7 @@ mod search;
 use std::path::{Path, PathBuf};
 pub use find::find_database_from_current_dir;
 pub use error::DatabaseError;
-pub use search::SearchResult;
+pub use search::{SearchResult, sort_by_attribute};
 
 #[derive(Debug)]
 pub struct Database {
@@ -57,6 +57,11 @@ impl Database {
     fn root_dir(&self) -> Result<&Path, DatabaseError> {
         self.path.parent()
             .ok_or(DatabaseError::RootDirNotFound)
+    }
+
+    /// Returns absolute path of a file in the database
+    fn get_absolute_path(&self, file_path: &Path) -> Result<PathBuf, DatabaseError> {
+        Ok(self.root_dir()?.join(file_path))
     }
 
     /// Creates a new database in `path` directory

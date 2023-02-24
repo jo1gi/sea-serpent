@@ -8,33 +8,6 @@ const DATA_FILE: &'static str = "data.json";
 type Tag = String;
 type File = PathBuf;
 
-/// Store tags and attributes for a file
-#[derive(Default, Debug, Deserialize, Serialize)]
-pub struct FileData {
-    pub tags: HashSet<Tag>,
-    pub attributes: HashMap<String, Vec<String>>,
-}
-
-impl FileData {
-
-    pub fn has_attribute(&self, key: &Option<String>, value: &Option<String>) -> bool {
-        match (key, value) {
-            (Some(key), None) => self.attributes.contains_key(key),
-            (Some(key), Some(value)) =>
-                self.attributes.get(key)
-                    .map(|values| values.contains(value))
-                    .unwrap_or(false),
-            (None, Some(value)) =>
-                self.attributes
-                    .values()
-                    .flat_map(|values| values)
-                    .find(|x| value == *x)
-                    .is_some(),
-            (None, None) => true,
-        }
-    }
-
-}
 
 #[derive(Default, Debug, Deserialize, Serialize)]
 pub struct DatabaseData {
@@ -103,3 +76,33 @@ impl DatabaseData {
 }
 
 type ReturnFiles<'a> = std::collections::hash_map::Iter<'a, PathBuf, FileData>;
+
+/// Store tags and attributes for a file
+#[derive(Default, Debug, Deserialize, Serialize)]
+pub struct FileData {
+    #[serde(rename = "t")]
+    pub tags: HashSet<Tag>,
+    #[serde(rename = "a")]
+    pub attributes: HashMap<String, Vec<String>>,
+}
+
+impl FileData {
+
+    pub fn has_attribute(&self, key: &Option<String>, value: &Option<String>) -> bool {
+        match (key, value) {
+            (Some(key), None) => self.attributes.contains_key(key),
+            (Some(key), Some(value)) =>
+                self.attributes.get(key)
+                    .map(|values| values.contains(value))
+                    .unwrap_or(false),
+            (None, Some(value)) =>
+                self.attributes
+                    .values()
+                    .flat_map(|values| values)
+                    .find(|x| value == *x)
+                    .is_some(),
+            (None, None) => true,
+        }
+    }
+
+}

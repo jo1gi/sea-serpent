@@ -1,4 +1,5 @@
 use std::iter::Peekable;
+use std::str::Chars;
 
 use thiserror::Error;
 use displaydoc::Display;
@@ -52,7 +53,7 @@ pub fn lex(input: &str) -> Result<Vec<LexItem>, LexError> {
     return Ok(result);
 }
 
-fn get_word<T: Iterator<Item = char>>(iter: &mut Peekable<T>) -> String {
+fn get_word(iter: &mut Peekable<Chars>) -> String {
     let mut quoted_string = false;
     let mut output = String::new();
     while let Some(c) = iter.peek() {

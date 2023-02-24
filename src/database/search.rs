@@ -47,3 +47,20 @@ fn match_search_query(filedata: &FileData, search_term: &SearchExpression) -> bo
         SearchExpression::Empty => true
     }
 }
+
+fn get_first_attribute<'a>(result: &'a SearchResult, key: &str) -> Option<&'a String> {
+    result.attributes.get(key)
+        .and_then(|values| {
+            let mut new_vec: Vec<_> = values.iter().collect();
+            new_vec.sort();
+            new_vec.first().map(|x| *x)
+        })
+}
+
+pub fn sort_by_attribute(results: &mut Vec<SearchResult>, key: &str) {
+    results.sort_by(|a, b| {
+        let a_value = get_first_attribute(a, key);
+        let b_value = get_first_attribute(b, key);
+        a_value.cmp(&b_value)
+    })
+}
