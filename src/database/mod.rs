@@ -96,11 +96,11 @@ fn is_valid_init_dir(path: &Path) -> bool {
 }
 
 fn get_attribute(tag: &str) -> Option<(String, String)> {
-    let mut iter = tag.split(":");
-    let key = iter.next();
-    if key.is_none() {
+    if !tag.contains(":") {
         return None;
     }
+    let mut iter = tag.split(":");
+    let key = iter.next();
     let value = iter.collect();
     return Some((key.unwrap().to_string(), value));
 }
