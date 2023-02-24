@@ -6,6 +6,8 @@
 
 Basic cli file tagging
 
+**This project is still early in development and can change at any moment**
+
 Sea-serpent uses a local database (a single directory and its subdirectories) to
 store tags for files.
 
