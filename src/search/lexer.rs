@@ -132,4 +132,12 @@ mod test {
         test_get_word("\"tag something\" else", "tag something");
     }
 
+    #[test]
+    fn attribute() {
+        assert_eq!(
+            lex("key:value").unwrap(),
+            vec![LexItem::word("key"), LexItem::AttributeSeperator, LexItem::word("value")]
+        );
+    }
+
 }

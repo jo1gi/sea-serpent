@@ -17,8 +17,10 @@ pub enum SearchError {
     ParseError(#[from] parser::ParseError),
 }
 
+/// Parse search query string as `SearchExpression`
 pub fn parse(input: &str) -> Result<SearchExpression, SearchError> {
     let tokens = lexer::lex(input)?;
     let expression = parser::parse(tokens)?;
+    log::debug!("search_expression: {:#?}", expression);
     Ok(expression)
 }

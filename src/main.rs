@@ -78,7 +78,6 @@ fn search(args: &SearchArgs) -> Result<(), SeaSerpentError> {
     let database = database::Database::load_from_current_dir()?;
     let joined = args.search_terms.join(" ");
     let search_expr = search::parse(&joined)?;
-    log::debug!("Search: {:#?}", search_expr);
     let mut results = database.search(search_expr);
     results.sort_by_key(|result| result.path);
     if let Some(search_by_key) = &args.sort_by {

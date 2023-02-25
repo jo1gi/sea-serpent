@@ -84,7 +84,9 @@ type ReturnFiles<'a> = std::collections::hash_map::Iter<'a, PathBuf, FileData>;
 /// Store tags and attributes for a file
 #[derive(Default, Debug, Deserialize, Serialize)]
 pub struct FileData {
+    /// Tags on file
     pub tags: HashSet<Tag>,
+    /// Key value attributes on file
     pub attributes: HashMap<String, Vec<String>>,
 }
 
@@ -105,6 +107,22 @@ impl FileData {
                     .is_some(),
             (None, None) => true,
         }
+    }
+
+}
+
+#[cfg(test)]
+mod test {
+
+    use std::str::FromStr;
+
+    #[test]
+    fn add_tag() {
+        let mut data = super::DatabaseData::default();
+        let path = std::path::PathBuf::from_str("test_file").unwrap();
+        let tag = "test_tag".to_string();
+        data.add_tag(&path, &tag);
+        assert!(data.files[&path].tags.contains(&tag));
     }
 
 }
