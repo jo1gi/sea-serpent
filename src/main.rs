@@ -58,6 +58,7 @@ fn remove_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
 fn cleanup() -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
     database.cleanup();
+    database.save()?;
     Ok(())
 }
 
