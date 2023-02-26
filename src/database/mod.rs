@@ -16,6 +16,17 @@ pub struct Database {
     data: data::DatabaseData,
 }
 
+#[derive(Debug)]
+enum Tag {
+    /// Basic
+    Tag(String),
+    /// Attribute with key and value
+    Attribute{
+        key: String,
+        value: String
+    }
+}
+
 impl Database {
 
     /// Save database to disk
@@ -29,12 +40,16 @@ impl Database {
         self.config.get_alias(tag)
             .unwrap_or_else(|| vec![tag])
             .iter()
-            .filter(|tag| self.config.tag_allowed(tag))
+            .map(|tag| parse_tag(tag))
+            .filter(|tag| match tag {
+                Tag::Tag(x) => self.config.tag_allowed(x),
+                Tag::Attribute{key, value: _} => self.config.tag_allowed(key),
+            })
             .for_each(|tag| {
-                log::debug!("Adding tag {} to {}", tag, file.display());
-                match get_attribute(&tag) {
-                    None => self.data.add_tag(&relative_path, &tag),
-                    Some((key, value)) => self.data.add_attribute(&relative_path, key, value)
+                log::debug!("Adding tag {:?} to {}", tag, file.display());
+                match tag {
+                    Tag::Tag(tag) => self.data.add_tag(&relative_path, &tag),
+                    Tag::Attribute{key, value} => self.data.add_attribute(&relative_path, key, value)
                 }
             });
         Ok(())
@@ -98,6 +113,13 @@ impl Database {
 /// Returns true if `path` is valid to be the root of a new database
 fn is_valid_init_dir(path: &Path) -> bool {
     path.is_dir() && !find::contains_database_dir(path)
+}
+
+fn parse_tag(tag: &String) -> Tag {
+    match get_attribute(&tag) {
+        None => Tag::Tag(tag.to_string()),
+        Some((key, value)) => Tag::Attribute{ key, value }
+    }
 }
 
 fn get_attribute(tag: &str) -> Option<(String, String)> {
