@@ -26,6 +26,7 @@ fn main() -> Result<(), SeaSerpentError> {
     logging::setup_logger(args.log_level)?;
     match args.command {
         Command::Add(add_args) => add_tags(&add_args),
+        Command::Cleanup => cleanup(),
         Command::Info(info_args) => print_info(&info_args),
         Command::Init => initialize_database(),
         Command::Remove(remove_args) => remove_tags(&remove_args),
@@ -51,6 +52,12 @@ fn remove_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
         database.remove_tag(&file, &args.tag)?;
     }
     database.save()?;
+    Ok(())
+}
+
+fn cleanup() -> Result<(), SeaSerpentError> {
+    let mut database = database::Database::load_from_current_dir()?;
+    database.cleanup();
     Ok(())
 }
 

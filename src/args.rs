@@ -16,6 +16,8 @@ pub struct Arguments {
 pub enum Command {
     /// Add tag to files
     Add(AddArgs),
+    /// Remove files that does not exist from database
+    Cleanup,
     /// Print information about file
     Info(InfoArgs),
     /// Initialize new database in current directory

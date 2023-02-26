@@ -108,6 +108,18 @@ impl Database {
         return Database::load(path);
     }
 
+    /// Remove files from database that does not exist anymore
+    pub fn cleanup(&mut self) {
+        let files_to_remove: Vec<PathBuf> = self.data.get_files()
+            .map(|(path, _filedata)| path.clone())
+            .filter(|path| !path.exists())
+            .collect();
+        for file in files_to_remove {
+            log::debug!("Removing {} from database", file.display());
+            self.data.remove_file(&file);
+        }
+    }
+
 }
 
 /// Returns true if `path` is valid to be the root of a new database

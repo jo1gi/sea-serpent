@@ -68,6 +68,10 @@ impl DatabaseData {
         }
     }
 
+    pub fn remove_file(&mut self, file: &Path) {
+        self.files.remove(file);
+    }
+
     /// Returns an iterator with all files
     pub fn get_files(&self) -> ReturnFiles {
         self.files.iter()
