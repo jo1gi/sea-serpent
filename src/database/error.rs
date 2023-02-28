@@ -19,4 +19,6 @@ pub enum DatabaseError {
     RootDirNotFound,
     /// Can't find file {0}
     FileNotFound(PathBuf),
+    /// Could not find command {0}
+    CommandNotFound(String),
 }

@@ -26,6 +26,9 @@ pub enum Command {
     Remove(AddArgs),
     /// Search in database
     Search(SearchArgs),
+    /// Run external subcommand
+    #[structopt(external_subcommand)]
+    External(Vec<String>),
 }
 
 #[derive(StructOpt)]

@@ -14,6 +14,8 @@ pub struct DatabaseConfig {
     /// Mappings from alias to tag list
     #[serde(default)]
     aliases: HashMap<String, Vec<String>>,
+    #[serde(default)]
+    commands: HashMap<String, String>,
 }
 
 impl DatabaseConfig {
@@ -28,6 +30,10 @@ impl DatabaseConfig {
         let matches_whitelist = tag_mathes_list(tag, &self.whitelist, true);
         let matches_blacklist = !tag_mathes_list(tag, &self.blacklist, false);
         matches_whitelist && matches_blacklist
+    }
+
+    pub fn get_command(&self, command: &str) -> Option<&String> {
+        self.commands.get(command)
     }
 
 

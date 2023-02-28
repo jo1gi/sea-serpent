@@ -68,6 +68,20 @@ impl Database {
         Ok(())
     }
 
+    pub fn get_command(&self, command: &str) -> Result<String, DatabaseError> {
+        let script_name = self.config.get_command(command)
+            .ok_or_else(|| DatabaseError::CommandNotFound(command.to_string()))?;
+        self.load_script(&script_name)
+    }
+
+    fn load_script(&self, script_name: &str) -> Result<String, DatabaseError> {
+        let script_path = self.path
+            .join("scripts")
+            .join(script_name);
+        std::fs::read_to_string(&script_path)
+            .or_else(|_| Err(DatabaseError::ReadFromDisk(script_path.to_path_buf())))
+    }
+
     /// Returns the root directory of the database
     fn root_dir(&self) -> Result<&Path, DatabaseError> {
         self.path.parent()

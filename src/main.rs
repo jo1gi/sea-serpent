@@ -1,6 +1,7 @@
 mod args;
 mod database;
 mod logging;
+mod script;
 mod search;
 mod utils;
 
@@ -26,6 +27,7 @@ fn main() -> Result<(), SeaSerpentError> {
     logging::setup_logger(args.log_level)?;
     match args.command {
         Command::Add(add_args) => add_tags(&add_args),
+        Command::External(args) => run_external_command(&args),
         Command::Cleanup => cleanup(),
         Command::Info(info_args) => print_info(&info_args),
         Command::Init => initialize_database(),
@@ -78,6 +80,14 @@ fn initialize_database() -> Result<(), SeaSerpentError> {
     let db = database::Database::init(&current_dir).unwrap();
     db.save()?;
     log::info!("Created new database");
+    Ok(())
+}
+
+pub fn run_external_command(input: &Vec<String>) -> Result<(), SeaSerpentError> {
+    let (subcommand, args) = input.split_last().unwrap();
+    let database = database::Database::load_from_current_dir()?;
+    log::debug!("Running subcommand {} with args {:?}", subcommand, args);
+    script::run_command(database, subcommand, args)?;
     Ok(())
 }
 
