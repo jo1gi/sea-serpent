@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 use super::DatabaseError;
+use crate::search::{SearchExpression, UnaryOp, BinaryOp};
 
 const DATA_FILE: &'static str = "data.json";
 
@@ -12,6 +13,13 @@ type File = PathBuf;
 #[derive(Default, Debug, Deserialize, Serialize)]
 pub struct DatabaseData {
     files: HashMap<File, FileData>,
+}
+
+#[derive(serde::Serialize)]
+pub struct SearchResult<'a> {
+    pub path: &'a PathBuf,
+    pub tags: &'a HashSet<String>,
+    pub attributes: &'a HashMap<String, Vec<String>>,
 }
 
 fn create_data_path(database_path: &Path) -> PathBuf {
@@ -68,6 +76,7 @@ impl DatabaseData {
         }
     }
 
+    /// Remove file from database
     pub fn remove_file(&mut self, file: &Path) {
         self.files.remove(file);
     }
@@ -77,10 +86,44 @@ impl DatabaseData {
         self.files.iter()
     }
 
+    /// Get information about file
     pub fn get_file(&self, file: &Path) -> Option<(&File, &FileData)> {
         self.files.get_key_value(file)
     }
 
+    /// Search for files matching `search_term`
+    pub fn search(&self, search_term: SearchExpression) -> Vec<SearchResult> {
+        self.files.iter()
+            .filter(|(_path, filedata)| match_search_query(&filedata, &search_term))
+            .map(|(path, filedata)| SearchResult {
+                path,
+                tags: &filedata.tags,
+                attributes: &filedata.attributes
+            })
+            .collect()
+    }
+
+}
+
+fn match_search_query(filedata: &FileData, search_term: &SearchExpression) -> bool {
+    match search_term {
+        SearchExpression::Tag(tag) => filedata.tags.contains(tag),
+        SearchExpression::Attribute { key, value } => filedata.has_attribute(key, value),
+        SearchExpression::BinaryOp{ left, right, op_type } => {
+            match op_type {
+                BinaryOp::And =>
+                    match_search_query(filedata, &left) && match_search_query(filedata, &right),
+                BinaryOp::Or =>
+                    match_search_query(filedata, &left) || match_search_query(filedata, &right),
+            }
+        },
+        SearchExpression::UnaryOp{ expr, op_type } => {
+            match op_type {
+                UnaryOp::Not => !match_search_query(filedata, &expr)
+            }
+        },
+        SearchExpression::Empty => true
+    }
 }
 
 type ReturnFiles<'a> = std::collections::hash_map::Iter<'a, PathBuf, FileData>;

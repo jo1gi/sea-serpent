@@ -91,7 +91,6 @@ fn search(args: &SearchArgs) -> Result<(), SeaSerpentError> {
     let joined = args.search_terms.join(" ");
     let search_expr = search::parse(&joined)?;
     let mut results = database.search(search_expr);
-    results.sort_by_key(|result| result.path);
     if let Some(search_by_key) = &args.sort_by {
         database::sort_by_attribute(&mut results, &search_by_key);
     }

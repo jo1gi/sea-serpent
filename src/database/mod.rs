@@ -2,12 +2,11 @@ mod config;
 mod data;
 mod error;
 mod find;
-mod search;
 
 use std::path::{Path, PathBuf};
 pub use find::find_database_from_current_dir;
 pub use error::DatabaseError;
-pub use search::{SearchResult, sort_by_attribute};
+pub use data::SearchResult;
 
 #[derive(Debug)]
 pub struct Database {
@@ -120,6 +119,42 @@ impl Database {
         }
     }
 
+    /// Search for files matching `search_term`
+    pub fn search(&self, search_term: crate::search::SearchExpression) -> Vec<SearchResult> {
+        let mut results = self.data.search(search_term);
+        results.sort_by_key(|result| result.path);
+        return results;
+    }
+
+    /// Return file tags and attributes
+    pub fn get_file_info(&self, file: &Path) -> Result<SearchResult, DatabaseError> {
+        let relative_path = find::path_relative_to_db_root(file, &self.root_dir()?)?;
+        self.data.get_file(&relative_path)
+            .map(|(path, filedata)| SearchResult {
+                path,
+                tags: &filedata.tags,
+                attributes: &filedata.attributes,
+            })
+            .ok_or_else(|| DatabaseError::FileNotFound(file.to_path_buf()))
+    }
+
+}
+
+fn get_first_attribute<'a>(result: &'a SearchResult, key: &str) -> Option<&'a String> {
+    result.attributes.get(key)
+        .and_then(|values| {
+            let mut new_vec: Vec<_> = values.iter().collect();
+            new_vec.sort();
+            new_vec.first().map(|x| *x)
+        })
+}
+
+pub fn sort_by_attribute(results: &mut Vec<SearchResult>, key: &str) {
+    results.sort_by(|a, b| {
+        let a_value = get_first_attribute(a, key);
+        let b_value = get_first_attribute(b, key);
+        a_value.cmp(&b_value)
+    })
 }
 
 /// Returns true if `path` is valid to be the root of a new database
