@@ -74,6 +74,9 @@ pub struct SearchArgs {
     /// Print more information about a file
     #[structopt(long)]
     pub info: bool,
+    /// Limit the number of results
+    #[structopt(long)]
+    pub limit: usize,
     pub search_terms: Vec<String>,
 }
 
