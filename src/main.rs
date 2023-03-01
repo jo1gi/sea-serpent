@@ -20,6 +20,8 @@ pub enum SeaSerpentError {
     Search(#[from] search::SearchError),
     /// {0}
     Logging(#[from] logging::SeaSerpentLoggingError),
+    /// {0}
+    Lua(#[from] mlua::Error),
 }
 
 fn main() -> Result<(), SeaSerpentError> {

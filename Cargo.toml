@@ -16,7 +16,7 @@ colored = { version = "^2.0" }
 thiserror = "1.0.30"
 displaydoc = "0.2"
 # Scripting
-mlua = { version = "0.8", features = ["luajit"] }
+mlua = { version = "0.8", features = ["luajit","serialize"] }
 
 [profile.release]
 lto = true
