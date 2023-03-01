@@ -42,7 +42,7 @@ impl Database {
             .map(|tag| parse_tag(tag))
             .filter(|tag| match tag {
                 Tag::Tag(x) => self.config.tag_allowed(x),
-                Tag::Attribute{key, value: _} => self.config.tag_allowed(key),
+                Tag::Attribute{key, value: _} => self.config.tag_allowed(&format!("{}:", key)),
             })
             .for_each(|tag| {
                 log::debug!("Adding tag {:?} to {}", tag, file.display());
