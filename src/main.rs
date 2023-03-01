@@ -95,7 +95,9 @@ fn search(args: &SearchArgs) -> Result<(), SeaSerpentError> {
     if let Some(search_by_key) = &args.sort_by {
         database::sort_by_attribute(&mut results, &search_by_key);
     }
-    results.truncate(args.limit);
+    if let Some(limit) = &args.limit {
+        results.truncate(*limit);
+    }
     logging::print_search_results(&results, args.into())?;
     Ok(())
 }

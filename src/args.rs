@@ -76,7 +76,7 @@ pub struct SearchArgs {
     pub info: bool,
     /// Limit the number of results
     #[structopt(long)]
-    pub limit: usize,
+    pub limit: Option<usize>,
     pub search_terms: Vec<String>,
 }
 
