@@ -24,14 +24,18 @@ pub enum SeaSerpentError {
 fn main() -> Result<(), SeaSerpentError> {
     let args = args::Arguments::from_args();
     logging::setup_logger(args.log_level)?;
-    match args.command {
+    let result = match args.command {
         Command::Add(add_args) => add_tags(&add_args),
         Command::Cleanup => cleanup(),
         Command::Info(info_args) => print_info(&info_args),
         Command::Init => initialize_database(),
         Command::Remove(remove_args) => remove_tags(&remove_args),
         Command::Search(search_args) => search(&search_args),
-    }?;
+    };
+    match result {
+        Ok(_) => (),
+        Err(error) => log::error!("{}", error),
+    };
     Ok(())
 }
 
