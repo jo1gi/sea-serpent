@@ -109,7 +109,7 @@ impl Database {
 
     /// Remove files from database that does not exist anymore
     pub fn cleanup(&mut self) {
-        let files_to_remove: Vec<PathBuf> = self.data.get_files()
+        let files_to_remove: Vec<PathBuf> = self.data.get_all_files()
             .map(|(path, _filedata)| path.clone())
             .filter(|path| !path.exists())
             .collect();

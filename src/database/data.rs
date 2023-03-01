@@ -82,7 +82,7 @@ impl DatabaseData {
     }
 
     /// Returns an iterator with all files
-    pub fn get_files(&self) -> ReturnFiles {
+    pub fn get_all_files(&self) -> ReturnFiles {
         self.files.iter()
     }
 
@@ -105,6 +105,7 @@ impl DatabaseData {
 
 }
 
+/// Returns true if `filedata` matches `search_term`
 fn match_search_query(filedata: &FileData, search_term: &SearchExpression) -> bool {
     match search_term {
         SearchExpression::Tag(tag) => filedata.tags.contains(tag),
@@ -129,7 +130,7 @@ fn match_search_query(filedata: &FileData, search_term: &SearchExpression) -> bo
 type ReturnFiles<'a> = std::collections::hash_map::Iter<'a, PathBuf, FileData>;
 
 /// Store tags and attributes for a file
-#[derive(Default, Debug, Deserialize, Serialize)]
+#[derive(Default, Debug, Deserialize, Serialize, PartialEq)]
 pub struct FileData {
     /// Tags on file
     pub tags: HashSet<Tag>,
@@ -163,13 +164,40 @@ mod test {
 
     use std::str::FromStr;
 
+    fn file_contains(data: &super::DatabaseData, path: &super::Path, tag: &String) -> bool {
+        data.get_file(path).unwrap().1.tags.contains(tag)
+    }
+
     #[test]
     fn add_tag() {
         let mut data = super::DatabaseData::default();
         let path = std::path::PathBuf::from_str("test_file").unwrap();
         let tag = "test_tag".to_string();
         data.add_tag(&path, &tag);
-        assert!(data.files[&path].tags.contains(&tag));
+        assert!(file_contains(&data, &path, &tag));
+    }
+
+    #[test]
+    fn remove_tag() {
+        let mut data = super::DatabaseData::default();
+        let path = std::path::PathBuf::from_str("test_file").unwrap();
+        let tag = "test_tag".to_string();
+        data.add_tag(&path, &tag);
+        data.remove_tag(&path, &tag);
+        assert!(!file_contains(&data, &path, &tag));
+    }
+
+    #[test]
+    fn search() {
+        let mut data = super::DatabaseData::default();
+        let path = std::path::PathBuf::from_str("test_file").unwrap();
+        let tag = "test_tag".to_string();
+        data.add_tag(&path, &tag);
+        assert_eq!(
+            data.search(crate::search::parse("test_tag").unwrap())[0].path,
+            &path
+        );
+        assert!(data.search(crate::search::parse("test_tag2").unwrap()).is_empty());
     }
 
 }

@@ -59,6 +59,7 @@ fn remove_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     Ok(())
 }
 
+/// Remove files from database that does not exist
 fn cleanup() -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
     database.cleanup();
