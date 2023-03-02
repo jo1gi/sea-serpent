@@ -1,13 +1,10 @@
 mod args;
-mod database;
-mod format;
 mod logging;
-mod search;
-mod utils;
 
 use args::{Command, AddArgs, InfoArgs, RenameArgs, SearchArgs};
 use structopt::StructOpt;
 use std::str::FromStr;
+use seaserpent::{database, format, search, utils};
 
 use thiserror::Error;
 use displaydoc::Display;

@@ -3,16 +3,29 @@ name = "sea-serpent"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "seaserpent"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sea-serpent"
+path = "src/cli/main.rs"
+required-features = ["cli"]
+
+[features]
+default = ["cli"]
+cli = ["dep:structopt","dep:fern"]
+
 [dependencies]
-log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.7"
 rt-format = "^0.3"
 # Cli
-structopt = "0.3"
-fern = "0.6"
+structopt = { version = "0.3", optional = true }
+fern = { version = "0.6", optional = true }
 colored = { version = "^2.0" }
+log = "0.4"
 # Error handling
 thiserror = "1.0.30"
 displaydoc = "0.2"
