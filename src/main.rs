@@ -1,11 +1,13 @@
 mod args;
 mod database;
+mod format;
 mod logging;
 mod search;
 mod utils;
 
-use args::{Command, AddArgs, InfoArgs, SearchArgs};
+use args::{Command, AddArgs, InfoArgs, RenameArgs, SearchArgs};
 use structopt::StructOpt;
+use std::str::FromStr;
 
 use thiserror::Error;
 use displaydoc::Display;
@@ -15,6 +17,8 @@ use displaydoc::Display;
 pub enum SeaSerpentError {
     /// {0}
     Database(#[from] database::DatabaseError),
+    /// Failed to format string
+    Formatting,
     /// {0}
     Search(#[from] search::SearchError),
     /// {0}
@@ -30,6 +34,7 @@ fn main() -> Result<(), SeaSerpentError> {
         Command::Info(info_args) => print_info(&info_args),
         Command::Init => initialize_database(),
         Command::Remove(remove_args) => remove_tags(&remove_args),
+        Command::Rename(rename_args) => rename(&rename_args),
         Command::Search(search_args) => search(&search_args),
     };
     match result {
@@ -83,6 +88,20 @@ fn initialize_database() -> Result<(), SeaSerpentError> {
     let db = database::Database::init(&current_dir).unwrap();
     db.save()?;
     log::info!("Created new database");
+    Ok(())
+}
+
+/// Rename file based on template and attributes
+fn rename(rename_args: &RenameArgs) -> Result<(), SeaSerpentError> {
+    let mut database = database::Database::load_from_current_dir()?;
+    for file in &rename_args.files {
+        let fileinfo = database.get_file_info(&file)?;
+        let new_path_str = format::format_result(&fileinfo, &rename_args.template)
+            .map_err(|_| SeaSerpentError::Formatting)?;
+        let new_path = std::path::PathBuf::from_str(&new_path_str).unwrap();
+        database.move_file(&file, &new_path)?;
+        log::info!("Moved {} to {}", file.display(), new_path.display());
+    }
     Ok(())
 }
 

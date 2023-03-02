@@ -24,6 +24,8 @@ pub enum Command {
     Init,
     /// Remove tag from files
     Remove(AddArgs),
+    /// Rename files
+    Rename(RenameArgs),
     /// Search in database
     Search(SearchArgs),
 }
@@ -58,6 +60,15 @@ impl Into<FileSearchSettings> for &AddArgs {
 
 #[derive(StructOpt)]
 pub struct InfoArgs {
+    pub files: Vec<PathBuf>,
+}
+
+#[derive(StructOpt)]
+pub struct RenameArgs {
+    /// Rename template
+    #[structopt(long)]
+    pub template: String,
+    /// Files to be renamed
     pub files: Vec<PathBuf>,
 }
 

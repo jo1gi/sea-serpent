@@ -103,6 +103,14 @@ impl DatabaseData {
             .collect()
     }
 
+    /// Move all data about `original_path` to `new_path`
+    pub fn move_file(&mut self, original_path: &Path, new_path: PathBuf) -> Result<(), DatabaseError>  {
+        let fileinfo = self.files.remove(original_path)
+            .ok_or_else(|| DatabaseError::FileNotFound(original_path.to_path_buf()))?;
+        self.files.insert(new_path, fileinfo);
+        Ok(())
+    }
+
 }
 
 /// Returns true if `filedata` matches `search_term`
