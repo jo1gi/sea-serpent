@@ -16,7 +16,7 @@ type OutputOptions<'a> = HashMap<&'a str, FormatValue<'a>>;
 
 fn formatting_options<'a>(result: &SearchResult<'a>) -> OutputOptions<'a> {
     result.attributes.iter()
-        .filter_map(|(key, values)| Some((key.as_ref(), FormatValue(values.first()?))))
+        .filter_map(|(key, values)| Some((key.as_ref(), FormatValue(values.iter().next()?))))
         .collect()
 }
 

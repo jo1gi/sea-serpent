@@ -61,9 +61,13 @@ impl Database {
         self.config.get_alias(tag)
             .unwrap_or_else(|| vec![tag])
             .iter()
+            .map(|tag| parse_tag(tag))
             .for_each(|tag| {
-                log::debug!("Removing tag {} from {}", tag, file.display());
-                self.data.remove_tag(&relative_path, &tag);
+                log::debug!("Removing tag {:?} from {}", tag, file.to_string_lossy().blue());
+                match tag {
+                    Tag::Tag(tag) => self.data.remove_tag(&relative_path, &tag),
+                    Tag::Attribute{key, value} => self.data.remove_attribute(&relative_path, key, value),
+                }
             });
         Ok(())
     }
@@ -134,7 +138,7 @@ impl Database {
         let root_dir = self.root_dir()?;
         let original_relative = find::path_relative_to_db_root(original, &root_dir)?;
         // The file is moved here because `path_relative_to_db_root` requires the file to exist
-        // This can be fixed if std::path::absolute comes out of nightly
+        // This can be fixed if. std::path::absolute comes out of nightly
         std::fs::rename(original, new)
             .map_err(|_| DatabaseError::WriteToDisk(new.to_path_buf()))?;
         let new_relative = find::path_relative_to_db_root(new, &root_dir)?;

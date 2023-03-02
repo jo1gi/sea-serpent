@@ -102,6 +102,7 @@ fn rename(rename_args: &RenameArgs) -> Result<(), SeaSerpentError> {
         database.move_file(&file, &new_path)?;
         log::info!("Moved {} to {}", file.display(), new_path.display());
     }
+    database.save()?;
     Ok(())
 }
 
