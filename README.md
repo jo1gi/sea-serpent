@@ -20,7 +20,7 @@ cargo install --git "https://github.com/jo1gi/sea-serpent.git"
 ## Usage
 
 ### Initialize database
-To initialize a new sea-serpent databse simply run:
+To initialize a new sea-serpent database simply run
 ```shell
 sea-serpent init
 ```
@@ -28,46 +28,70 @@ This will create a new folder in the current directory called `.sea-serpent`
 which will contain all files for sea-serpent.
 
 ### Adding tags
-To add a tag to a file simple run:
+* Add a tag to a file
 ```shell
-sea-serpent add -t <tag> <files>
+sea-serpent add -t <tag> <file>
 ```
 
-You can also tag a directory and all its content recusively by using the
-`--recursive` or the `-r` argument:
+* Add tag to directory and all its descendants with the `--recursive` or the `-r` argument
 ```shell
 sea-serpent add -t <tag> <directory> --recursive
 ```
 
-To only add files, use `--exclude-dirs`:
+* Don't include directories with `--exclude-dirs`
 ```shell
 sea-serpent add -t <tag> <directory> --recursive --exclude-dirs
 ```
 
-To see more options use:
+* Tag files with key-value pairs by separating the key and the value with a
+  colon
 ```shell
-sea-serpent add --help
+sea-serpent add -t <key>:<value> <files>
 ```
 
 ### Searching
-To search for files with specific tags use:
+* Search for files with specific tags
 ```shell
 sea-serpent search <tag1> <tag2>
 ```
 
-To search for files with *either* `tag1` or `tag2` run:
+* Search for either `tag1` or `tag2` with `or` keyword
 ```shell
 sea-serpent search <tag1> or <tag2>
 ```
 
-You can exlude tags with the `not` keyword:
+* Exclude tags with `not` keyword
 ```shell
 sea-serpent search <tag1> and not <tag2>
 ```
 
-All this can be combined to more complex operation with grouping:
+* Combine to more complex operation by grouping with parentheses
 ```shell
 sea-serpent search (<tag1> or <tag2>) and (<tag3> or not <tag2>)
+```
+
+* Search for a key-value pair by adding a colon
+```shell
+sea-serpent search <key>:<value>
+```
+
+* Search for with a value (not key)
+```shell
+sea-serpent search :<value>
+```
+* Search for with a key (not value)
+```shell
+sea-serpent search <key>:
+```
+
+* Sort the search results by the values in a key-value pair
+```shell
+sea-serpent search <tag> --sort-by <key>
+```
+
+* Limit the amount of results
+```shell
+sea-serpent search <tag> --limit <number>
 ```
 
 ## Contributions
