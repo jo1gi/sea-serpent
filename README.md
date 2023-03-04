@@ -12,7 +12,11 @@ Sea-serpent uses a local database (a single directory and its subdirectories) to
 store tags for files.
 
 ## Installation
-Installation requires cargo which can be installed from https://www.rust-lang.org/tools/install.
+sea-serpent can be installed by downloading a pre-compiled binary from
+[Release](https://github.com/jo1gi/sea-serpent/releases) or by compiling it
+youself.
+
+To compile sea-serpent youself you have to install [cargo](https://www.rust-lang.org/tools/install) and run:
 ```shell
 cargo install --git "https://github.com/jo1gi/sea-serpent.git"
 ```

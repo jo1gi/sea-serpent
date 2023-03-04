@@ -1,5 +1,6 @@
 use std::path::{PathBuf, Path};
 use super::DatabaseError;
+use colored::Colorize;
 
 pub const DATABASE_DIR: &'static str = ".sea-serpent";
 
@@ -40,13 +41,16 @@ pub fn find_database_from_current_dir() -> Result<PathBuf, DatabaseError> {
 
 /// Returns the path of `path` relative to the database root directory
 pub fn path_relative_to_db_root(path: &Path, database_root: &Path) -> Result<PathBuf, DatabaseError> {
+    log::trace!("Getting relative path of {}", path.to_string_lossy().blue());
     get_full_path(path)?
         .strip_prefix(database_root)
         .or_else(|_| Err(DatabaseError::FileNotFound(path.to_path_buf())))
         .map(|x| x.to_path_buf())
 }
 
+/// Get absolute path from relative path
 pub fn get_full_path(path: &Path) -> Result<PathBuf, DatabaseError> {
+    // TODO Replace with std::path::absolute when it becomes available
     std::fs::canonicalize(path)
         .or(Err(DatabaseError::CurrentDirNotFound))
 }

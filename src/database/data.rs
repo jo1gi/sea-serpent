@@ -19,7 +19,7 @@ pub struct DatabaseData {
 pub struct SearchResult<'a> {
     pub path: &'a PathBuf,
     pub tags: &'a HashSet<String>,
-    pub attributes: &'a HashMap<String, Vec<String>>,
+    pub attributes: &'a HashMap<String, HashSet<String>>,
 }
 
 fn create_data_path(database_path: &Path) -> PathBuf {
@@ -64,15 +64,23 @@ impl DatabaseData {
         self.prepare_file(file);
         let filedata = self.files.get_mut(file).unwrap();
         if !filedata.attributes.contains_key(&key) {
-            filedata.attributes.insert(key.clone(), Vec::new());
+            filedata.attributes.insert(key.clone(), HashSet::new());
         }
-        filedata.attributes.get_mut(&key).unwrap().push(value);
+        filedata.attributes.get_mut(&key).unwrap().insert(value);
     }
 
     /// Remove tag from file
     pub fn remove_tag(&mut self, file: &Path, tag: &Tag) {
         if let Some(filedata) = self.files.get_mut(file) {
             filedata.tags.remove(tag);
+        }
+    }
+
+    pub fn remove_attribute(&mut self, file: &Path, key: String, value: String) {
+        if let Some(filedata) = self.files.get_mut(file) {
+            if let Some(values) = filedata.attributes.get_mut(&key) {
+                values.remove(&value);
+            }
         }
     }
 
@@ -101,6 +109,14 @@ impl DatabaseData {
                 attributes: &filedata.attributes
             })
             .collect()
+    }
+
+    /// Move all data about `original_path` to `new_path`
+    pub fn move_file(&mut self, original_path: &Path, new_path: PathBuf) -> Result<(), DatabaseError>  {
+        let fileinfo = self.files.remove(original_path)
+            .ok_or_else(|| DatabaseError::FileNotFound(original_path.to_path_buf()))?;
+        self.files.insert(new_path, fileinfo);
+        Ok(())
     }
 
 }
@@ -135,7 +151,7 @@ pub struct FileData {
     /// Tags on file
     pub tags: HashSet<Tag>,
     /// Key value attributes on file
-    pub attributes: HashMap<String, Vec<String>>,
+    pub attributes: HashMap<String, HashSet<String>>,
 }
 
 impl FileData {

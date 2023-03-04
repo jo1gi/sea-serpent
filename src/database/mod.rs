@@ -4,6 +4,7 @@ mod error;
 mod find;
 
 use std::path::{Path, PathBuf};
+use colored::Colorize;
 pub use find::find_database_from_current_dir;
 pub use error::DatabaseError;
 pub use data::SearchResult;
@@ -60,9 +61,13 @@ impl Database {
         self.config.get_alias(tag)
             .unwrap_or_else(|| vec![tag])
             .iter()
+            .map(|tag| parse_tag(tag))
             .for_each(|tag| {
-                log::debug!("Removing tag {} from {}", tag, file.display());
-                self.data.remove_tag(&relative_path, &tag);
+                log::debug!("Removing tag {:?} from {}", tag, file.to_string_lossy().blue());
+                match tag {
+                    Tag::Tag(tag) => self.data.remove_tag(&relative_path, &tag),
+                    Tag::Attribute{key, value} => self.data.remove_attribute(&relative_path, key, value),
+                }
             });
         Ok(())
     }
@@ -94,6 +99,7 @@ impl Database {
 
     /// Load database from disk located in `path`
     pub fn load(path: PathBuf) -> Result<Self, DatabaseError> {
+        log::debug!("Loading database from {}", path.to_string_lossy().blue());
         Ok(Self {
             config: config::get_database_config(&path),
             data: data::DatabaseData::load(&path)?,
@@ -114,7 +120,7 @@ impl Database {
             .filter(|path| !path.exists())
             .collect();
         for file in files_to_remove {
-            log::debug!("Removing {} from database", file.display());
+            log::debug!("Removing {} from database", file.to_string_lossy().blue());
             self.data.remove_file(&file);
         }
     }
@@ -124,6 +130,19 @@ impl Database {
         let mut results = self.data.search(search_term);
         results.sort_by_key(|result| result.path);
         return results;
+    }
+
+    /// Move all data about `original_path` to `new_path`,
+    /// both in the database and on the filesystem
+    pub fn move_file(&mut self, original: &Path, new: &Path) -> Result<(), DatabaseError> {
+        let root_dir = self.root_dir()?;
+        let original_relative = find::path_relative_to_db_root(original, &root_dir)?;
+        // The file is moved here because `path_relative_to_db_root` requires the file to exist
+        // This can be fixed if. std::path::absolute comes out of nightly
+        std::fs::rename(original, new)
+            .map_err(|_| DatabaseError::WriteToDisk(new.to_path_buf()))?;
+        let new_relative = find::path_relative_to_db_root(new, &root_dir)?;
+        self.data.move_file(&original_relative,new_relative)
     }
 
     /// Return file tags and attributes
