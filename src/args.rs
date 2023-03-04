@@ -38,6 +38,8 @@ pub struct AddArgs {
     pub exclude_dirs: bool,
     #[structopt(long)]
     pub exclude_files: bool,
+    #[structopt(long)]
+    pub stdin: bool,
     pub files: Vec<PathBuf>,
 }
 
@@ -45,6 +47,7 @@ impl Into<FileSearchSettings> for &AddArgs {
     fn into(self) -> FileSearchSettings {
         FileSearchSettings {
             recursive: self.recursive,
+            stdin: self.stdin,
             filetype_filter: if self.exclude_dirs {
                 FiletypeFilter::FilesOnly
             } else if self.exclude_files {

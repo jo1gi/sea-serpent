@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 pub struct FileSearchSettings {
     pub recursive: bool,
+    pub stdin: bool,
     pub filetype_filter: FiletypeFilter,
 }
 
@@ -12,7 +14,9 @@ pub enum FiletypeFilter {
 }
 
 pub fn get_files(roots: &Vec<PathBuf>, settings: FileSearchSettings) -> Vec<PathBuf> {
-    roots.iter()
+    let stdin_files = get_stdin_files(&settings);
+    roots.into_iter()
+        .chain(stdin_files.iter())
         .flat_map(|root| {
             if settings.recursive {
                 get_files_recursive(root)
@@ -26,6 +30,17 @@ pub fn get_files(roots: &Vec<PathBuf>, settings: FileSearchSettings) -> Vec<Path
             FiletypeFilter::FoldersOnly => file.is_dir(),
         })
         .collect()
+}
+
+fn get_stdin_files(settings: &FileSearchSettings) -> Vec<PathBuf> {
+    if settings.stdin {
+        std::io::stdin()
+            .lines()
+            .filter_map(|line| PathBuf::from_str(&line.ok()?).ok())
+            .collect()
+    } else {
+        Vec::new()
+    }
 }
 
 fn get_files_recursive(start: &Path) -> Vec<PathBuf> {
