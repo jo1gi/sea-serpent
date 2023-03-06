@@ -1,9 +1,12 @@
 mod args;
 mod logging;
 
-use args::{Command, AddArgs, InfoArgs, RenameArgs, SearchArgs};
+use args::{Command, AddArgs, InfoArgs, RenameArgs, SearchArgs, FileSelection};
 use structopt::StructOpt;
-use std::str::FromStr;
+use std::{
+    str::FromStr,
+    path::PathBuf,
+};
 use seaserpent::{database, format, search, utils};
 
 use thiserror::Error;
@@ -41,10 +44,14 @@ fn main() -> Result<(), SeaSerpentError> {
     Ok(())
 }
 
-/// Add new tags to files
+fn get_files(file_selection: &FileSelection) -> Vec<PathBuf> {
+    utils::files::get_files(&file_selection.files, file_selection.into())
+}
+
+/// Add new tags to file
 fn add_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
-    for file in utils::files::get_files(&args.files, args.into()) {
+    for file in get_files(&args.file_selection) {
         database.add_tag(&file, &args.tag)?;
     }
     database.save()?;
@@ -54,7 +61,7 @@ fn add_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
 /// Remove tags from files
 fn remove_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
-    for file in utils::files::get_files(&args.files, args.into()) {
+    for file in get_files(&args.file_selection) {
         database.remove_tag(&file, &args.tag)?;
     }
     database.save()?;
@@ -72,8 +79,8 @@ fn cleanup() -> Result<(), SeaSerpentError> {
 /// Print info about files
 fn print_info(args: &InfoArgs) -> Result<(), SeaSerpentError> {
     let database = database::Database::load_from_current_dir()?;
-    for file in &args.files {
-        let file_info = database.get_file_info(file)?;
+    for file in get_files(&args.file_selection) {
+        let file_info = database.get_file_info(&file)?;
         logging::print_result_descriptive(&file_info);
     }
     Ok(())
@@ -91,7 +98,7 @@ fn initialize_database() -> Result<(), SeaSerpentError> {
 /// Rename file based on template and attributes
 fn rename(rename_args: &RenameArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
-    for file in &rename_args.files {
+    for file in get_files(&rename_args.file_selection) {
         let fileinfo = database.get_file_info(&file)?;
         let new_path_str = format::format_result(&fileinfo, &rename_args.template)
             .map_err(|_| SeaSerpentError::Formatting)?;

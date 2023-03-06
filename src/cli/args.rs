@@ -34,18 +34,29 @@ pub enum Command {
 pub struct AddArgs {
     #[structopt(short, long)]
     pub tag: String,
+    #[structopt(flatten)]
+    pub file_selection: FileSelection,
+}
+
+#[derive(StructOpt)]
+pub struct FileSelection {
+    /// Select files recursively through folders
     #[structopt(short, long)]
     pub recursive: bool,
+    /// Don't select directories
     #[structopt(long)]
     pub exclude_dirs: bool,
+    /// Don't select files
     #[structopt(long)]
     pub exclude_files: bool,
+    /// Select files from stdin
     #[structopt(long)]
     pub stdin: bool,
+    /// List of files
     pub files: Vec<PathBuf>,
 }
 
-impl Into<FileSearchSettings> for &AddArgs {
+impl Into<FileSearchSettings> for &FileSelection {
     fn into(self) -> FileSearchSettings {
         FileSearchSettings {
             recursive: self.recursive,
@@ -63,7 +74,8 @@ impl Into<FileSearchSettings> for &AddArgs {
 
 #[derive(StructOpt)]
 pub struct InfoArgs {
-    pub files: Vec<PathBuf>,
+    #[structopt(flatten)]
+    pub file_selection: FileSelection,
 }
 
 #[derive(StructOpt)]
@@ -71,8 +83,8 @@ pub struct RenameArgs {
     /// Rename template
     #[structopt(long)]
     pub template: String,
-    /// Files to be renamed
-    pub files: Vec<PathBuf>,
+    #[structopt(flatten)]
+    pub file_selection: FileSelection,
 }
 
 #[derive(StructOpt)]
