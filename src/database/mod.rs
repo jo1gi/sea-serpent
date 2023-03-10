@@ -113,8 +113,11 @@ impl Database {
         return Database::load(path);
     }
 
-    /// Remove files from database that does not exist anymore
+    /// Clean up the database in multiple ways:
+    /// - Remove files from database that does not exist anymore
+    /// - Remove tags from that are not allowed (by whitelist or blacklist)
     pub fn cleanup(&mut self) {
+        // Remove files that does not exist
         let files_to_remove: Vec<PathBuf> = self.data.get_all_files()
             .map(|(path, _filedata)| path.clone())
             .filter(|path| !path.exists())
@@ -122,6 +125,23 @@ impl Database {
         for file in files_to_remove {
             log::debug!("Removing {} from database", file.to_string_lossy().blue());
             self.data.remove_file(&file);
+        }
+        // Remove tags that are not allowed
+        let unallowed_tags = self.data.get_all_files()
+            .map(|(path, filedata)| {
+                let unallowed_tags = filedata.tags
+                    .iter()
+                    .filter(|tag| !self.config.tag_allowed(tag))
+                    .map(|tag| tag.clone())
+                    .collect::<Vec<_>>();
+                (path.clone(), unallowed_tags)
+            })
+            .collect::<Vec<_>>();
+        for (path, tags) in unallowed_tags {
+            for tag in tags {
+                log::debug!("Removing {tag} from {}", path.to_string_lossy());
+                self.data.remove_tag(&path, &tag);
+            }
         }
     }
 
