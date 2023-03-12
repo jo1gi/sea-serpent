@@ -52,5 +52,5 @@ pub fn path_relative_to_db_root(path: &Path, database_root: &Path) -> Result<Pat
 pub fn get_full_path(path: &Path) -> Result<PathBuf, DatabaseError> {
     // TODO Replace with std::path::absolute when it becomes available
     std::fs::canonicalize(path)
-        .or(Err(DatabaseError::CurrentDirNotFound))
+        .map_err(|_| DatabaseError::FileNotFound(path.to_path_buf()))
 }
