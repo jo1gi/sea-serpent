@@ -54,7 +54,6 @@ fn add_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     for file in get_files(&args.file_selection) {
         database.add_tag(&file, &args.tag)?;
     }
-    database.save()?;
     Ok(())
 }
 
@@ -64,21 +63,19 @@ fn remove_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     for file in get_files(&args.file_selection) {
         database.remove_tag(&file, &args.tag)?;
     }
-    database.save()?;
     Ok(())
 }
 
 /// Remove files from database that does not exist
 fn cleanup() -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
-    database.cleanup();
-    database.save()?;
+    database.cleanup()?;
     Ok(())
 }
 
 /// Print info about files
 fn print_info(args: &InfoArgs) -> Result<(), SeaSerpentError> {
-    let database = database::Database::load_from_current_dir()?;
+    let mut database = database::Database::load_from_current_dir()?;
     for file in get_files(&args.file_selection) {
         let file_info = database.get_file_info(&file)?;
         logging::print_result_descriptive(&file_info);
@@ -89,8 +86,7 @@ fn print_info(args: &InfoArgs) -> Result<(), SeaSerpentError> {
 /// Create new database in current dir
 fn initialize_database() -> Result<(), SeaSerpentError> {
     let current_dir = std::env::current_dir().unwrap();
-    let db = database::Database::init(&current_dir).unwrap();
-    db.save()?;
+    database::Database::init(&current_dir)?;
     log::info!("Created new database");
     Ok(())
 }
@@ -106,16 +102,15 @@ fn rename(rename_args: &RenameArgs) -> Result<(), SeaSerpentError> {
         database.move_file(&file, &new_path)?;
         log::info!("Moved {} to {}", file.display(), new_path.display());
     }
-    database.save()?;
     Ok(())
 }
 
 /// Search for files in database
 fn search(args: &SearchArgs) -> Result<(), SeaSerpentError> {
-    let database = database::Database::load_from_current_dir()?;
+    let mut database = database::Database::load_from_current_dir()?;
     let joined = args.search_terms.join(" ");
     let search_expr = search::parse(&joined)?;
-    let mut results = database.search(search_expr);
+    let mut results = database.search(search_expr)?;
     if let Some(search_by_key) = &args.sort_by {
         database::sort_by_attribute(&mut results, &search_by_key);
     }

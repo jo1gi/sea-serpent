@@ -9,7 +9,6 @@ pub use find::find_database_from_current_dir;
 pub use error::DatabaseError;
 pub use data::SearchResult;
 
-#[derive(Debug)]
 pub struct Database {
     path: PathBuf,
     config: config::DatabaseConfig,
@@ -29,11 +28,6 @@ enum Tag {
 
 impl Database {
 
-    /// Save database to disk
-    pub fn save(&self) -> Result<(), DatabaseError> {
-        self.data.save(&self.path)
-    }
-
     /// Add tag to file
     pub fn add_tag(&mut self, file: &Path, tag: &String) -> Result<(), DatabaseError> {
         let relative_path = find::path_relative_to_db_root(file, &self.root_dir()?)?;
@@ -48,8 +42,8 @@ impl Database {
             .for_each(|tag| {
                 log::debug!("Adding tag {:?} to {}", tag, file.display());
                 match tag {
-                    Tag::Tag(tag) => self.data.add_tag(&relative_path, &tag),
-                    Tag::Attribute{key, value} => self.data.add_attribute(&relative_path, key, value)
+                    Tag::Tag(tag) => self.data.add_tag(&relative_path, &tag).unwrap(),
+                    Tag::Attribute{key, value} => self.data.add_attribute(&relative_path, key, value).unwrap()
                 }
             });
         Ok(())
@@ -65,8 +59,8 @@ impl Database {
             .for_each(|tag| {
                 log::debug!("Removing tag {:?} from {}", tag, file.to_string_lossy().blue());
                 match tag {
-                    Tag::Tag(tag) => self.data.remove_tag(&relative_path, &tag),
-                    Tag::Attribute{key, value} => self.data.remove_attribute(&relative_path, key, value),
+                    Tag::Tag(tag) => self.data.remove_tag(&relative_path, &tag).unwrap(),
+                    Tag::Attribute{key, value} => self.data.remove_attribute(&relative_path, key, value).unwrap(),
                 }
             });
         Ok(())
@@ -84,16 +78,17 @@ impl Database {
     }
 
     /// Creates a new database in `path` directory
-    pub fn init(path: &Path) -> Option<Self> {
+    pub fn init(path: &Path) -> Result<Self, DatabaseError> {
         if !is_valid_init_dir(path) {
-            return None;
+            return Err(DatabaseError::InvalidRootDir);
         }
         let database_dir = path.join(find::DATABASE_DIR);
-        std::fs::create_dir(&database_dir).ok()?;
-        Some(Self {
-            path: find::get_full_path(&database_dir).ok()?,
+        std::fs::create_dir(&database_dir)
+            .map_err(|_| DatabaseError::WriteToDisk(database_dir.clone()))?;
+        Ok(Self {
+            path: find::get_full_path(&database_dir)?,
             config: Default::default(),
-            data: Default::default(),
+            data: data::DatabaseData::load(&database_dir)?,
         })
     }
 
@@ -116,40 +111,41 @@ impl Database {
     /// Clean up the database in multiple ways:
     /// - Remove files from database that does not exist anymore
     /// - Remove tags from that are not allowed (by whitelist or blacklist)
-    pub fn cleanup(&mut self) {
+    pub fn cleanup(&mut self) -> Result<(), DatabaseError> {
         // Remove files that does not exist
-        let files_to_remove: Vec<PathBuf> = self.data.get_all_files()
-            .map(|(path, _filedata)| path.clone())
+        let files_to_remove: Vec<PathBuf> = self.data.get_all_files()?
+            .into_iter()
+            .map(|result| result.path)
             .filter(|path| !path.exists())
             .collect();
         for file in files_to_remove {
             log::debug!("Removing {} from database", file.to_string_lossy().blue());
-            self.data.remove_file(&file);
+            self.data.remove_file(&file)?;
         }
         // Remove tags that are not allowed
-        let unallowed_tags = self.data.get_all_files()
-            .map(|(path, filedata)| {
-                let unallowed_tags = filedata.tags
+        let unallowed_tags = self.data.get_all_files()?
+            .into_iter()
+            .map(|result| {
+                let unallowed_tags = result.tags
                     .iter()
                     .filter(|tag| !self.config.tag_allowed(tag))
                     .map(|tag| tag.clone())
                     .collect::<Vec<_>>();
-                (path.clone(), unallowed_tags)
+                (result.path, unallowed_tags)
             })
             .collect::<Vec<_>>();
         for (path, tags) in unallowed_tags {
             for tag in tags {
                 log::debug!("Removing {tag} from {}", path.to_string_lossy());
-                self.data.remove_tag(&path, &tag);
+                self.data.remove_tag(&path, &tag)?;
             }
         }
+        Ok(())
     }
 
     /// Search for files matching `search_term`
-    pub fn search(&self, search_term: crate::search::SearchExpression) -> Vec<SearchResult> {
-        let mut results = self.data.search(search_term);
-        results.sort_by_key(|result| result.path);
-        return results;
+    pub fn search(&mut self, search_term: crate::search::SearchExpression) -> Result<Vec<SearchResult>, DatabaseError> {
+        self.data.search(search_term)
     }
 
     /// Move all data about `original_path` to `new_path`,
@@ -166,26 +162,18 @@ impl Database {
     }
 
     /// Return file tags and attributes
-    pub fn get_file_info(&self, file: &Path) -> Result<SearchResult, DatabaseError> {
+    pub fn get_file_info(&mut self, file: &Path) -> Result<SearchResult, DatabaseError> {
         let relative_path = find::path_relative_to_db_root(file, &self.root_dir()?)?;
         self.data.get_file(&relative_path)
-            .map(|(path, filedata)| SearchResult {
-                path,
-                tags: &filedata.tags,
-                attributes: &filedata.attributes,
-            })
-            .ok_or_else(|| DatabaseError::FileNotFound(file.to_path_buf()))
+            .map_err(|_| DatabaseError::FileNotFound(file.to_path_buf()))
     }
 
 }
 
 fn get_first_attribute<'a>(result: &'a SearchResult, key: &str) -> Option<&'a String> {
-    result.attributes.get(key)
-        .and_then(|values| {
-            let mut new_vec: Vec<_> = values.iter().collect();
-            new_vec.sort();
-            new_vec.first().map(|x| *x)
-        })
+    result.attributes.iter()
+        .find(|(x, _)| key == x)
+        .map(|(_, value)| value)
 }
 
 pub fn sort_by_attribute(results: &mut Vec<SearchResult>, key: &str) {

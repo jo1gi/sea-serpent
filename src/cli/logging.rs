@@ -64,12 +64,10 @@ fn print_search_result_simple(results: &Vec<SearchResult>, options: &SearchPrint
 
 pub fn print_result_descriptive(result: &SearchResult) {
     println!("{}", result.path.to_string_lossy().underline());
-    for (key, values) in result.attributes {
-        for value in values {
-            println!("{key}: {value}")
-        }
+    for (key, value) in &result.attributes {
+        println!("{key}: {value}")
     }
-    for tag in result.tags {
+    for tag in &result.tags {
         println!("- {tag}");
     }
     println!("");

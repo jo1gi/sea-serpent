@@ -204,4 +204,19 @@ mod test {
             }
         )
     }
+
+    #[test]
+    fn unary_catches_single() {
+        assert_eq!(
+            parse(vec![LexItem::Not, LexItem::word("A"), LexItem::word("B")]).unwrap(),
+            Expression::BinaryOp {
+                op_type: BinaryOp::And,
+                left: Box::new(Expression::UnaryOp{
+                    expr: Box::new(Expression::tag("A")),
+                    op_type: super::UnaryOp::Not
+                }),
+                right: Box::new(Expression::tag("B"))
+            }
+        )
+    }
 }

@@ -14,9 +14,9 @@ pub fn format_result(result: &SearchResult, template: &str) -> Result<String, ()
 
 type OutputOptions<'a> = HashMap<&'a str, FormatValue<'a>>;
 
-fn formatting_options<'a>(result: &SearchResult<'a>) -> OutputOptions<'a> {
+fn formatting_options<'a>(result: &'a SearchResult) -> OutputOptions<'a> {
     result.attributes.iter()
-        .filter_map(|(key, values)| Some((key.as_ref(), FormatValue(values.iter().next()?))))
+        .filter_map(|(key, value)| Some((key.as_ref(), FormatValue(value))))
         .collect()
 }
 

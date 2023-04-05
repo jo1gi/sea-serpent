@@ -19,4 +19,12 @@ pub enum DatabaseError {
     RootDirNotFound,
     /// Can't find file {0}
     FileNotFound(PathBuf),
+    /// {0}
+    DatabaseConnection(#[from] diesel::ConnectionError),
+    /// {0}
+    Diesel(#[from] diesel::result::Error),
+    /// Invalid database dir
+    InvalidRootDir,
+    /// Failed to setup database
+    DBSetup,
 }
