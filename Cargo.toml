@@ -30,7 +30,7 @@ log = "0.4"
 thiserror = "1.0.30"
 displaydoc = "0.2"
 # Database
-diesel = { version = "2.0", features = ["sqlite"] }
+diesel = { version = "2.0", features = ["sqlite", "returning_clauses_for_sqlite_3_35"] }
 diesel_migrations = "2.0"
 
 [profile.release]

@@ -53,10 +53,28 @@ impl DatabaseData {
         return Ok(data);
     }
 
+    fn get_file_id(&mut self, file: &Path) -> Result<i32, DatabaseError> {
+        let path_str = file.to_string_lossy().to_string();
+        let file_ids = models::files::table
+            .filter(models::files::path.is(&path_str))
+            .limit(1)
+            .select(models::files::id)
+            .load::<i32>(&mut self.connection)?;
+        if file_ids.len() > 0 {
+            Ok(file_ids[0])
+        } else {
+            // Create new file in db if file does not exist
+            let new_id: models::File = diesel::insert_into(models::files::table)
+                .values(models::files::path.eq(path_str))
+                .get_result(&mut self.connection)?;
+            Ok(new_id.id)
+        }
+    }
+
     /// Add tag to file
     pub fn add_tag(&mut self, file: &Path, tag: &String) -> Result<(), DatabaseError> {
         let new_tag = models::Tag {
-            path: file.to_string_lossy().to_string(),
+            file_id: self.get_file_id(file)?,
             tag: tag.clone(),
         };
         diesel::insert_into(models::tags::table)
@@ -68,7 +86,7 @@ impl DatabaseData {
     /// Add attribute to file
     pub fn add_attribute(&mut self, file: &Path, key: String, value: String) -> Result<(), DatabaseError> {
         let new_attribute = models::Attribute {
-            path: file.to_string_lossy().to_string(),
+            file_id: self.get_file_id(file)?,
             attr_key: key,
             attr_value: value
         };
@@ -80,9 +98,9 @@ impl DatabaseData {
 
     /// Remove tag from file
     pub fn remove_tag(&mut self, file: &Path, tag: &String) -> Result<(), DatabaseError> {
-        let path_str = file.to_string_lossy().to_string();
+        let file_id = self.get_file_id(file)?;
         let db_tag = models::tags::table
-            .filter(models::tags::path.is(path_str))
+            .filter(models::tags::file_id.is(file_id))
             .filter(models::tags::tag.is(tag));
         diesel::delete(db_tag)
             .execute(&mut self.connection)?;
@@ -90,9 +108,9 @@ impl DatabaseData {
     }
 
     pub fn remove_attribute(&mut self, file: &Path, key: String, value: String) -> Result<(), DatabaseError> {
-        let path_str = file.to_string_lossy().to_string();
+        let file_id = self.get_file_id(file)?;
         let db_attribute = models::attributes::table
-            .filter(models::attributes::path.is(path_str))
+            .filter(models::attributes::file_id.is(file_id))
             .filter(models::attributes::attr_key.is(key))
             .filter(models::attributes::attr_value.is(value));
         diesel::delete(db_attribute)
@@ -102,51 +120,42 @@ impl DatabaseData {
 
     /// Remove file from database
     pub fn remove_file(&mut self, file: &Path) -> Result<(), DatabaseError> {
-        let path_str = file.to_string_lossy().to_string();
+        let file_id = self.get_file_id(file)?;
         let tags = models::tags::table
-            .filter(models::tags::path.is(&path_str));
+            .filter(models::tags::file_id.is(file_id));
         diesel::delete(tags)
             .execute(&mut self.connection)?;
         let attributes = models::attributes::table
-            .filter(models::attributes::path.is(&path_str));
+            .filter(models::attributes::file_id.is(file_id));
         diesel::delete(attributes)
             .execute(&mut self.connection)?;
         Ok(())
     }
 
-    fn get_filenames(&mut self) -> Result<Vec<String>, DatabaseError> {
-       let mut tags = models::tags::table
-            .select(models::tags::path)
-            .distinct()
-            .load::<String>(&mut self.connection)?;
-       let attributes = models::attributes::table
-            .select(models::attributes::path)
-            .distinct()
-            .load::<String>(&mut self.connection)?;
-        tags.extend(attributes);
-        tags.sort();
-        tags.dedup();
-        Ok(tags)
-
+    fn get_files(&mut self) -> Result<Vec<(i32, String)>, DatabaseError> {
+        let files = models::files::table
+            .select((models::files::id, models::files::path))
+            .load::<(i32, String)>(&mut self.connection)?;
+        Ok(files)
     }
 
     /// Returns an iterator with all files
     pub fn get_all_files(&mut self) -> Result<Vec<SearchResult>, DatabaseError> {
-        let results = self.get_filenames()?
+        let results = self.get_files()?
             .into_iter()
-            .filter_map(|filename| {
+            .filter_map(|(file_id, file_name)| {
                 let tags = models::tags::table
-                    .filter(models::tags::path.is(&filename))
+                    .filter(models::tags::file_id.is(&file_id))
                     .select(models::tags::tag)
                     .load::<String>(&mut self.connection)
                     .ok()?;
                 let attributes = models::attributes::table
-                    .filter(models::attributes::path.is(&filename))
+                    .filter(models::attributes::file_id.is(&file_id))
                     .select((models::attributes::attr_key, models::attributes::attr_value))
                     .load::<(String, String)>(&mut self.connection)
                     .ok()?;
                 Some(SearchResult {
-                    path: PathBuf::from_str(&filename).unwrap(),
+                    path: PathBuf::from_str(&file_name).unwrap(),
                     tags: tags.into_iter().collect(),
                     attributes
                 })
@@ -157,12 +166,12 @@ impl DatabaseData {
 
     /// Get information about file
     pub fn get_file(&mut self, file: &Path) -> Result<SearchResult, DatabaseError> {
-        let path_str = file.to_string_lossy().to_string();
+        let file_id = self.get_file_id(file)?;
         let tags: HashSet<String> = models::tags::table
-            .filter(models::tags::path.is(path_str))
-            .load::<models::Tag>(&mut self.connection)?
+            .filter(models::tags::file_id.is(file_id))
+            .select(models::tags::tag)
+            .load::<String>(&mut self.connection)?
             .into_iter()
-            .map(|tag| tag.tag)
             .collect();
         return Ok(SearchResult {
             path: file.to_path_buf(),
@@ -184,9 +193,9 @@ impl DatabaseData {
     pub fn move_file(&mut self, original_path: &Path, new_path: PathBuf) -> Result<(), DatabaseError>  {
         let original_str = original_path.to_string_lossy().to_string();
         let new_str = new_path.to_string_lossy().to_string();
-        diesel::update(models::tags::table)
-            .filter(models::tags::path.is(original_str))
-            .set(models::tags::path.eq(new_str))
+        diesel::update(models::files::table)
+            .filter(models::files::path.is(original_str))
+            .set(models::files::path.eq(new_str))
             .execute(&mut self.connection)?;
         Ok(())
     }
@@ -278,6 +287,16 @@ mod test {
         data.add_tag(&path, &tag).unwrap();
         data.remove_tag(&path, &tag).unwrap();
         assert!(!file_contains(&mut data, &path, &tag));
+    }
+
+    #[test]
+    fn remove_file() {
+        let mut data = create_memory_db();
+        let path = std::path::PathBuf::from_str("test_file").unwrap();
+        let tag = "test_tag".to_string();
+        data.add_tag(&path, &tag).unwrap();
+        data.remove_file(&path).unwrap();
+        assert!(data.get_file(&path).is_err());
     }
 
     #[test]

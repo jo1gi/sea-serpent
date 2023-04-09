@@ -31,21 +31,30 @@ impl Database {
     /// Add tag to file
     pub fn add_tag(&mut self, file: &Path, tag: &String) -> Result<(), DatabaseError> {
         let relative_path = find::path_relative_to_db_root(file, &self.root_dir()?)?;
-        self.config.get_alias(tag)
-            .unwrap_or_else(|| vec![tag])
+        let tags = self.config.get_alias(tag)
+            .unwrap_or_else(|| vec![tag]);
+        // Filter tags
+        let iter = tags
             .iter()
             .map(|tag| parse_tag(tag))
             .filter(|tag| match tag {
                 Tag::Tag(x) => self.config.tag_allowed(x),
                 Tag::Attribute{key, value: _} => self.config.tag_allowed(&format!("{}:", key)),
-            })
-            .for_each(|tag| {
-                log::debug!("Adding tag {:?} to {}", tag, file.display());
-                match tag {
-                    Tag::Tag(tag) => self.data.add_tag(&relative_path, &tag).unwrap(),
-                    Tag::Attribute{key, value} => self.data.add_attribute(&relative_path, key, value).unwrap()
-                }
             });
+        for tag in iter {
+            log::debug!("Adding tag {:?} to {}", tag, file.display());
+            // Add to storage
+            let result = match tag {
+                Tag::Tag(tag) => self.data.add_tag(&relative_path, &tag),
+                Tag::Attribute{key, value} => self.data.add_attribute(&relative_path, key, value)
+            };
+            // Handle error
+            match result {
+                Ok(_) => (),
+                err => return err,
+            }
+
+        }
         Ok(())
     }
 
