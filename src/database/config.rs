@@ -23,10 +23,14 @@ impl DatabaseConfig {
             .map(|x| x.iter().collect())
     }
 
-    /// Checks if the tag is in the whitelist
-    pub fn tag_allowed(&self, tag: &String) -> bool {
-        let matches_whitelist = tag_mathes_list(tag, &self.whitelist, true);
-        let matches_blacklist = !tag_mathes_list(tag, &self.blacklist, false);
+    /// Checks if the tag is in the whitelist and not in the blacklist
+    pub fn tag_allowed(&self, tag: &super::Tag) -> bool {
+        let tag_str = match tag {
+            super::Tag::Key(key) => key.clone(),
+            super::Tag::KeyValue{ key, value: _ } => format!("{}:", key),
+        };
+        let matches_whitelist = tag_mathes_list(&tag_str, &self.whitelist, true);
+        let matches_blacklist = !tag_mathes_list(&tag_str, &self.blacklist, false);
         matches_whitelist && matches_blacklist
     }
 
@@ -60,6 +64,7 @@ fn tag_mathes_list(tag: &String, list: &Option<Vec<String>>, default: bool) -> b
 
 #[cfg(test)]
 mod test {
+    use super::super::Tag;
 
     #[test]
     fn whitelist() {
@@ -67,8 +72,8 @@ mod test {
             whitelist: Some(vec!["tag_a".to_string()]),
             ..Default::default()
         };
-        assert!(config.tag_allowed(&"tag_a".to_string()));
-        assert!(!config.tag_allowed(&"tag_b".to_string()));
+        assert!(config.tag_allowed(&Tag::new("tag_a")));
+        assert!(!config.tag_allowed(&Tag::new("tag_b")));
     }
 
     #[test]
@@ -77,8 +82,8 @@ mod test {
             blacklist: Some(vec!["tag_b".to_string()]),
             ..Default::default()
         };
-        assert!(config.tag_allowed(&"tag_a".to_string()));
-        assert!(!config.tag_allowed(&"tag_b".to_string()));
+        assert!(config.tag_allowed(&Tag::new("tag_a")));
+        assert!(!config.tag_allowed(&Tag::new("tag_b")));
     }
 
 }

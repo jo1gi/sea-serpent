@@ -1,6 +1,6 @@
 mod models;
 
-use super::DatabaseError;
+use super::{DatabaseError, Tag};
 use crate::search::{SearchExpression, UnaryOp, BinaryOp};
 
 use std::{
@@ -12,9 +12,12 @@ use diesel::{
     self,
     prelude::*,
     sqlite::SqliteConnection,
+    result::Error as DieselError,
+    result::DatabaseErrorKind,
     Connection, RunQueryDsl, QueryDsl,
 };
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness,};
+
 
 /// Name of sqlite file
 const DATA_FILE: &'static str = "data.sqlite";
@@ -22,10 +25,12 @@ const DATA_FILE: &'static str = "data.sqlite";
 /// Sql migration data
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
+
 pub struct DatabaseData {
     /// Connection to sqlite database
     connection: SqliteConnection,
 }
+
 
 #[derive(serde::Serialize)]
 pub struct SearchResult {
@@ -34,12 +39,14 @@ pub struct SearchResult {
     pub attributes: Vec<(String, String)>
 }
 
+
 /// Create full path to sqlite file
 fn create_data_path(database_path: &Path) -> PathBuf {
     database_path.join(DATA_FILE)
 }
 
 impl DatabaseData {
+
 
     /// Load data file from disk
     pub fn load(database_path: &Path) -> Result<Self, DatabaseError> {
@@ -53,6 +60,7 @@ impl DatabaseData {
         return Ok(data);
     }
 
+
     fn get_file_id(&mut self, file: &Path) -> Result<i32, DatabaseError> {
         let path_str = file.to_string_lossy().to_string();
         let file_ids = models::files::table
@@ -63,74 +71,100 @@ impl DatabaseData {
         if file_ids.len() > 0 {
             Ok(file_ids[0])
         } else {
-            // Create new file in db if file does not exist
-            let new_id: models::File = diesel::insert_into(models::files::table)
-                .values(models::files::path.eq(path_str))
-                .get_result(&mut self.connection)?;
-            Ok(new_id.id)
+            Err(DatabaseError::FileNotFound(file.to_path_buf()))
         }
     }
+
+
+    /// Create new file in database if it does not exist
+    /// Returns file id
+    fn create_file(&mut self, file: &Path) -> Result<i32, DatabaseError> {
+        match self.get_file_id(file) {
+            Ok(file_id) => Ok(file_id),
+            Err(DatabaseError::FileNotFound(_)) => {
+                // Create new file in db if file does not exist
+                let path_str = file.to_string_lossy().to_string();
+                let new_id: models::File = diesel::insert_into(models::files::table)
+                    .values(models::files::path.eq(path_str))
+                    .get_result(&mut self.connection)?;
+                Ok(new_id.id)
+            },
+            x => x
+        }
+    }
+
 
     /// Add tag to file
     pub fn add_tag(&mut self, file: &Path, tag: &String) -> Result<(), DatabaseError> {
         let new_tag = models::Tag {
-            file_id: self.get_file_id(file)?,
+            file_id: self.create_file(file)?,
             tag: tag.clone(),
         };
-        diesel::insert_into(models::tags::table)
+        let result = diesel::insert_into(models::tags::table)
             .values(&new_tag)
-            .execute(&mut self.connection)?;
-        Ok(())
+            .execute(&mut self.connection);
+        match result {
+            Ok(_) => Ok(()),
+            // Ignore error when trying to add the same tag twice
+            Err(DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Ok(()),
+            Err(e) => Err(e)?
+        }
     }
+
 
     /// Add attribute to file
     pub fn add_attribute(&mut self, file: &Path, key: String, value: String) -> Result<(), DatabaseError> {
         let new_attribute = models::Attribute {
-            file_id: self.get_file_id(file)?,
+            file_id: self.create_file(file)?,
             attr_key: key,
             attr_value: value
         };
-        diesel::insert_into(models::attributes::table)
+        let result = diesel::insert_into(models::attributes::table)
             .values(&new_attribute)
-            .execute(&mut self.connection)?;
-        Ok(())
+            .execute(&mut self.connection);
+        match result {
+            Ok(_) => Ok(()),
+            // Ignore error when trying to add the same tag twice
+            Err(DieselError::DatabaseError(DatabaseErrorKind::UniqueViolation, _)) => Ok(()),
+            Err(e) => Err(e)?
+        }
     }
+
 
     /// Remove tag from file
-    pub fn remove_tag(&mut self, file: &Path, tag: &String) -> Result<(), DatabaseError> {
+    pub fn remove_tag(&mut self, file: &Path, tag: &Tag) -> Result<(), DatabaseError> {
         let file_id = self.get_file_id(file)?;
-        let db_tag = models::tags::table
-            .filter(models::tags::file_id.is(file_id))
-            .filter(models::tags::tag.is(tag));
-        diesel::delete(db_tag)
-            .execute(&mut self.connection)?;
+        match tag {
+            Tag::Key(key) => {
+                let db_tag = models::tags::table
+                    .filter(models::tags::file_id.is(file_id))
+                    .filter(models::tags::tag.is(key));
+                diesel::delete(db_tag)
+                    .execute(&mut self.connection)?;
+            },
+            Tag::KeyValue { key, value } => {
+                let db_attribute = models::attributes::table
+                    .filter(models::attributes::file_id.is(file_id))
+                    .filter(models::attributes::attr_key.is(key))
+                    .filter(models::attributes::attr_value.is(value));
+                diesel::delete(db_attribute)
+                    .execute(&mut self.connection)?;
+            }
+        }
         Ok(())
     }
 
-    pub fn remove_attribute(&mut self, file: &Path, key: String, value: String) -> Result<(), DatabaseError> {
-        let file_id = self.get_file_id(file)?;
-        let db_attribute = models::attributes::table
-            .filter(models::attributes::file_id.is(file_id))
-            .filter(models::attributes::attr_key.is(key))
-            .filter(models::attributes::attr_value.is(value));
-        diesel::delete(db_attribute)
-            .execute(&mut self.connection)?;
-        Ok(())
-    }
 
-    /// Remove file from database
+    /// Remove file with all tags and attributes from database
     pub fn remove_file(&mut self, file: &Path) -> Result<(), DatabaseError> {
         let file_id = self.get_file_id(file)?;
-        let tags = models::tags::table
-            .filter(models::tags::file_id.is(file_id));
-        diesel::delete(tags)
-            .execute(&mut self.connection)?;
-        let attributes = models::attributes::table
-            .filter(models::attributes::file_id.is(file_id));
-        diesel::delete(attributes)
+        let file = models::files::table
+            .filter(models::files::id.is(file_id));
+        diesel::delete(file)
             .execute(&mut self.connection)?;
         Ok(())
     }
+
 
     fn get_files(&mut self) -> Result<Vec<(i32, String)>, DatabaseError> {
         let files = models::files::table
@@ -139,46 +173,44 @@ impl DatabaseData {
         Ok(files)
     }
 
+
     /// Returns an iterator with all files
     pub fn get_all_files(&mut self) -> Result<Vec<SearchResult>, DatabaseError> {
         let results = self.get_files()?
             .into_iter()
-            .filter_map(|(file_id, file_name)| {
-                let tags = models::tags::table
-                    .filter(models::tags::file_id.is(&file_id))
-                    .select(models::tags::tag)
-                    .load::<String>(&mut self.connection)
-                    .ok()?;
-                let attributes = models::attributes::table
-                    .filter(models::attributes::file_id.is(&file_id))
-                    .select((models::attributes::attr_key, models::attributes::attr_value))
-                    .load::<(String, String)>(&mut self.connection)
-                    .ok()?;
-                Some(SearchResult {
-                    path: PathBuf::from_str(&file_name).unwrap(),
-                    tags: tags.into_iter().collect(),
-                    attributes
-                })
+            .filter_map(|(file_id, file_path)| {
+                self.get_file(file_id, PathBuf::from_str(&file_path).ok()?).ok()
             })
             .collect();
         Ok(results)
     }
 
-    /// Get information about file
-    pub fn get_file(&mut self, file: &Path) -> Result<SearchResult, DatabaseError> {
-        let file_id = self.get_file_id(file)?;
+
+    fn get_file(&mut self, file_id: i32, file_path: PathBuf) -> Result<SearchResult, DatabaseError> {
         let tags: HashSet<String> = models::tags::table
             .filter(models::tags::file_id.is(file_id))
             .select(models::tags::tag)
             .load::<String>(&mut self.connection)?
             .into_iter()
             .collect();
+        let attributes = models::attributes::table
+            .filter(models::attributes::file_id.is(&file_id))
+            .select((models::attributes::attr_key, models::attributes::attr_value))
+            .load::<(String, String)>(&mut self.connection)?;
         return Ok(SearchResult {
-            path: file.to_path_buf(),
+            path: file_path,
             tags,
-            attributes: Vec::new(),
+            attributes,
         });
     }
+
+
+    /// Get information about file
+    pub fn get_file_from_path(&mut self, file_path: &Path) -> Result<SearchResult, DatabaseError> {
+        let file_id = self.get_file_id(file_path)?;
+        self.get_file(file_id, file_path.to_path_buf())
+    }
+
 
     /// Search for files matching `search_term`
     pub fn search(&mut self, search_term: SearchExpression) -> Result<Vec<SearchResult>, DatabaseError> {
@@ -189,7 +221,9 @@ impl DatabaseData {
         Ok(results)
     }
 
-    /// Move all data about `original_path` to `new_path`
+
+    /// Move all data about `original_path` to `new_path`.
+    /// This will not move the file on disk.
     pub fn move_file(&mut self, original_path: &Path, new_path: PathBuf) -> Result<(), DatabaseError>  {
         let original_str = original_path.to_string_lossy().to_string();
         let new_str = new_path.to_string_lossy().to_string();
@@ -253,6 +287,7 @@ impl SearchResult {
 #[cfg(test)]
 mod test {
 
+    use super::super::Tag;
     use std::str::FromStr;
     use diesel::Connection;
     use diesel_migrations::MigrationHarness;
@@ -267,7 +302,7 @@ mod test {
     }
 
     fn file_contains(data: &mut super::DatabaseData, path: &super::Path, tag: &String) -> bool {
-        data.get_file(path).unwrap().tags.contains(tag)
+        data.get_file_from_path(path).unwrap().tags.contains(tag)
     }
 
     #[test]
@@ -285,7 +320,7 @@ mod test {
         let path = std::path::PathBuf::from_str("test_file").unwrap();
         let tag = "test_tag".to_string();
         data.add_tag(&path, &tag).unwrap();
-        data.remove_tag(&path, &tag).unwrap();
+        data.remove_tag(&path, &Tag::new(&tag)).unwrap();
         assert!(!file_contains(&mut data, &path, &tag));
     }
 
@@ -296,7 +331,7 @@ mod test {
         let tag = "test_tag".to_string();
         data.add_tag(&path, &tag).unwrap();
         data.remove_file(&path).unwrap();
-        assert!(data.get_file(&path).is_err());
+        assert!(data.get_file_from_path(&path).is_err());
     }
 
     #[test]

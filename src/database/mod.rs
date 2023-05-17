@@ -1,30 +1,23 @@
 mod config;
-mod data;
+mod storage;
 mod error;
 mod find;
+mod tag;
 
 use std::path::{Path, PathBuf};
 use colored::Colorize;
 pub use find::find_database_from_current_dir;
 pub use error::DatabaseError;
-pub use data::SearchResult;
+pub use storage::SearchResult;
+pub use tag::Tag;
 
+/// Seaserpent database
 pub struct Database {
     path: PathBuf,
     config: config::DatabaseConfig,
-    data: data::DatabaseData,
+    storage: storage::DatabaseData,
 }
 
-#[derive(Debug)]
-enum Tag {
-    /// Basic
-    Tag(String),
-    /// Attribute with key and value
-    Attribute{
-        key: String,
-        value: String
-    }
-}
 
 impl Database {
 
@@ -36,17 +29,14 @@ impl Database {
         // Filter tags
         let iter = tags
             .iter()
-            .map(|tag| parse_tag(tag))
-            .filter(|tag| match tag {
-                Tag::Tag(x) => self.config.tag_allowed(x),
-                Tag::Attribute{key, value: _} => self.config.tag_allowed(&format!("{}:", key)),
-            });
+            .map(|tag| Tag::new(tag))
+            .filter(|tag| self.config.tag_allowed(tag));
         for tag in iter {
-            log::debug!("Adding tag {:?} to {}", tag, file.display());
+            log::debug!("Adding tag, {}, to {}", tag.to_string(), file.display());
             // Add to storage
             let result = match tag {
-                Tag::Tag(tag) => self.data.add_tag(&relative_path, &tag),
-                Tag::Attribute{key, value} => self.data.add_attribute(&relative_path, key, value)
+                Tag::Key(tag) => self.storage.add_tag(&relative_path, &tag),
+                Tag::KeyValue{key, value} => self.storage.add_attribute(&relative_path, key, value)
             };
             // Handle error
             match result {
@@ -64,13 +54,14 @@ impl Database {
         self.config.get_alias(tag)
             .unwrap_or_else(|| vec![tag])
             .iter()
-            .map(|tag| parse_tag(tag))
+            .map(|tag| Tag::new(tag))
             .for_each(|tag| {
-                log::debug!("Removing tag {:?} from {}", tag, file.to_string_lossy().blue());
-                match tag {
-                    Tag::Tag(tag) => self.data.remove_tag(&relative_path, &tag).unwrap(),
-                    Tag::Attribute{key, value} => self.data.remove_attribute(&relative_path, key, value).unwrap(),
-                }
+                log::debug!(
+                    "Removing tag {:?} from {}",
+                    tag.to_string(),
+                    file.to_string_lossy().blue()
+                );
+                self.storage.remove_tag(&relative_path, &tag).unwrap();
             });
         Ok(())
     }
@@ -82,7 +73,7 @@ impl Database {
     }
 
     /// Returns absolute path of a file in the database
-    fn get_absolute_path(&self, file_path: &Path) -> Result<PathBuf, DatabaseError> {
+    pub fn get_absolute_path(&self, file_path: &Path) -> Result<PathBuf, DatabaseError> {
         Ok(self.root_dir()?.join(file_path))
     }
 
@@ -97,7 +88,7 @@ impl Database {
         Ok(Self {
             path: find::get_full_path(&database_dir)?,
             config: Default::default(),
-            data: data::DatabaseData::load(&database_dir)?,
+            storage: storage::DatabaseData::load(&database_dir)?,
         })
     }
 
@@ -106,7 +97,7 @@ impl Database {
         log::debug!("Loading database from {}", path.to_string_lossy().blue());
         Ok(Self {
             config: config::get_database_config(&path),
-            data: data::DatabaseData::load(&path)?,
+            storage: storage::DatabaseData::load(&path)?,
             path: find::get_full_path(&path)?,
         })
     }
@@ -122,31 +113,32 @@ impl Database {
     /// - Remove tags from that are not allowed (by whitelist or blacklist)
     pub fn cleanup(&mut self) -> Result<(), DatabaseError> {
         // Remove files that does not exist
-        let files_to_remove: Vec<PathBuf> = self.data.get_all_files()?
+        let files_to_remove: Vec<PathBuf> = self.storage.get_all_files()?
             .into_iter()
-            .map(|result| result.path)
+            .filter_map(|result| self.get_absolute_path(&result.path).ok())
             .filter(|path| !path.exists())
             .collect();
         for file in files_to_remove {
             log::debug!("Removing {} from database", file.to_string_lossy().blue());
-            self.data.remove_file(&file)?;
+            self.storage.remove_file(&file)?;
         }
         // Remove tags that are not allowed
-        let unallowed_tags = self.data.get_all_files()?
+        let unallowed_tags = self.storage.get_all_files()?
             .into_iter()
             .map(|result| {
                 let unallowed_tags = result.tags
                     .iter()
+                    .map(|tag| Tag::new(tag))
                     .filter(|tag| !self.config.tag_allowed(tag))
-                    .map(|tag| tag.clone())
+                    .map(|tag| tag)
                     .collect::<Vec<_>>();
                 (result.path, unallowed_tags)
             })
             .collect::<Vec<_>>();
         for (path, tags) in unallowed_tags {
             for tag in tags {
-                log::debug!("Removing {tag} from {}", path.to_string_lossy());
-                self.data.remove_tag(&path, &tag)?;
+                log::debug!("Removing {} from {}", tag.to_string(), path.to_string_lossy());
+                self.storage.remove_tag(&path, &tag)?;
             }
         }
         Ok(())
@@ -154,7 +146,10 @@ impl Database {
 
     /// Search for files matching `search_term`
     pub fn search(&mut self, search_term: crate::search::SearchExpression) -> Result<Vec<SearchResult>, DatabaseError> {
-        self.data.search(search_term)
+        let mut results = self.storage.search(search_term)?;
+        // TODO Remove clone
+        results.sort_by_key(|result| result.path.clone());
+        Ok(results)
     }
 
     /// Move all data about `original_path` to `new_path`,
@@ -167,13 +162,13 @@ impl Database {
         std::fs::rename(original, new)
             .map_err(|_| DatabaseError::WriteToDisk(new.to_path_buf()))?;
         let new_relative = find::path_relative_to_db_root(new, &root_dir)?;
-        self.data.move_file(&original_relative,new_relative)
+        self.storage.move_file(&original_relative,new_relative)
     }
 
     /// Return file tags and attributes
     pub fn get_file_info(&mut self, file: &Path) -> Result<SearchResult, DatabaseError> {
         let relative_path = find::path_relative_to_db_root(file, &self.root_dir()?)?;
-        self.data.get_file(&relative_path)
+        self.storage.get_file_from_path(&relative_path)
             .map_err(|_| DatabaseError::FileNotFound(file.to_path_buf()))
     }
 
@@ -196,21 +191,4 @@ pub fn sort_by_attribute(results: &mut Vec<SearchResult>, key: &str) {
 /// Returns true if `path` is valid to be the root of a new database
 fn is_valid_init_dir(path: &Path) -> bool {
     path.is_dir() && !find::contains_database_dir(path)
-}
-
-fn parse_tag(tag: &String) -> Tag {
-    match get_attribute(&tag) {
-        None => Tag::Tag(tag.to_string()),
-        Some((key, value)) => Tag::Attribute{ key, value }
-    }
-}
-
-fn get_attribute(tag: &str) -> Option<(String, String)> {
-    if !tag.contains(":") {
-        return None;
-    }
-    let mut iter = tag.split(":");
-    let key = iter.next();
-    let value = iter.collect();
-    return Some((key.unwrap().to_string(), value));
 }

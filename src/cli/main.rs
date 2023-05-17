@@ -117,6 +117,11 @@ fn search(args: &SearchArgs) -> Result<(), SeaSerpentError> {
     if let Some(limit) = &args.limit {
         results.truncate(*limit);
     }
+    if args.absolute_path {
+        for result in &mut results {
+            result.path = database.get_absolute_path(&result.path)?;
+        }
+    }
     logging::print_search_results(&results, args.into())?;
     Ok(())
 }
