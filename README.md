@@ -34,23 +34,23 @@ which will contain all files for sea-serpent.
 ### Adding tags
 * Add a tag to a file
 ```shell
-sea-serpent add -t <tag> <file>
+sea-serpent add -t <tag> -f <file>
 ```
 
 * Add tag to directory and all its descendants with the `--recursive` or the `-r` argument
 ```shell
-sea-serpent add -t <tag> <directory> --recursive
+sea-serpent add -t <tag> -f <directory> --recursive
 ```
 
 * Don't include directories with `--exclude-dirs`
 ```shell
-sea-serpent add -t <tag> <directory> --recursive --exclude-dirs
+sea-serpent add -t <tag> -f <directory> --recursive --exclude-dirs
 ```
 
 * Tag files with key-value pairs by separating the key and the value with a
   colon
 ```shell
-sea-serpent add -t <key>:<value> <files>
+sea-serpent add -t <key>:<value> -f <files>
 ```
 
 ### Searching
