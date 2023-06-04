@@ -10,7 +10,8 @@ pub struct FileSearchSettings {
 pub enum FiletypeFilter {
     All,
     FilesOnly,
-    FoldersOnly
+    FoldersOnly,
+    Nothing
 }
 
 pub fn get_files(roots: &Vec<PathBuf>, settings: FileSearchSettings) -> Vec<PathBuf> {
@@ -28,6 +29,7 @@ pub fn get_files(roots: &Vec<PathBuf>, settings: FileSearchSettings) -> Vec<Path
             FiletypeFilter::All => true,
             FiletypeFilter::FilesOnly => file.is_file(),
             FiletypeFilter::FoldersOnly => file.is_dir(),
+            FiletypeFilter::Nothing => false,
         })
         .collect()
 }

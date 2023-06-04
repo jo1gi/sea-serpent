@@ -45,7 +45,7 @@ pub struct FileSelection {
     pub recursive: bool,
     /// Don't select directories
     #[structopt(long)]
-    pub exclude_dirs: bool,
+    pub include_dirs: bool,
     /// Don't select files
     #[structopt(long)]
     pub exclude_files: bool,
@@ -62,12 +62,11 @@ impl Into<FileSearchSettings> for &FileSelection {
         FileSearchSettings {
             recursive: self.recursive,
             stdin: self.stdin,
-            filetype_filter: if self.exclude_dirs {
-                FiletypeFilter::FilesOnly
-            } else if self.exclude_files {
-                FiletypeFilter::FoldersOnly
-            }else {
-                FiletypeFilter::All
+            filetype_filter: match (self.include_dirs, self.exclude_files) {
+                (false, false) => FiletypeFilter::FilesOnly,
+                (false, true) => FiletypeFilter::Nothing,
+                (true, false) => FiletypeFilter::All,
+                (true, true) => FiletypeFilter::FoldersOnly,
             },
         }
     }
