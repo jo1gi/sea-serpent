@@ -1,7 +1,7 @@
 mod args;
 mod logging;
 
-use args::{Command, AddArgs, InfoArgs, RenameArgs, SearchArgs, FileSelection};
+use args::{Command, TaggingArgs, InfoArgs, RenameArgs, SearchArgs, FileSelection};
 use structopt::StructOpt;
 use std::{
     str::FromStr,
@@ -49,7 +49,7 @@ fn get_files(file_selection: &FileSelection) -> Vec<PathBuf> {
 }
 
 /// Add new tags to file
-fn add_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
+fn add_tags(args: &TaggingArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
     for file in get_files(&args.file_selection) {
         for tag in &args.tags {
@@ -60,7 +60,7 @@ fn add_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
 }
 
 /// Remove tags from files
-fn remove_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
+fn remove_tags(args: &TaggingArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
     for file in get_files(&args.file_selection) {
         for tag in &args.tags {

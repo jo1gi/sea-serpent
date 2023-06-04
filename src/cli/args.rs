@@ -15,7 +15,7 @@ pub struct Arguments {
 #[derive(StructOpt)]
 pub enum Command {
     /// Add tag to files
-    Add(AddArgs),
+    Add(TaggingArgs),
     /// Remove files that does not exist from database
     Cleanup,
     /// Print information about file
@@ -23,7 +23,7 @@ pub enum Command {
     /// Initialize new database in current directory
     Init,
     /// Remove tag from files
-    Remove(AddArgs),
+    Remove(TaggingArgs),
     /// Rename files
     Rename(RenameArgs),
     /// Search in database
@@ -31,19 +31,22 @@ pub enum Command {
 }
 
 #[derive(StructOpt)]
-pub struct AddArgs {
+pub struct TaggingArgs {
+    /// Tags to files
     #[structopt(short, long)]
     pub tags: Vec<String>,
     #[structopt(flatten)]
     pub file_selection: FileSelection,
 }
 
+
+/// Cli options for selecting files
 #[derive(StructOpt)]
 pub struct FileSelection {
     /// Select files recursively through folders
     #[structopt(short, long)]
     pub recursive: bool,
-    /// Don't select directories
+    /// Select directories
     #[structopt(long)]
     pub include_dirs: bool,
     /// Don't select files
@@ -57,6 +60,8 @@ pub struct FileSelection {
     pub files: Vec<PathBuf>,
 }
 
+
+// Convert file selection cli arguments to internal system
 impl Into<FileSearchSettings> for &FileSelection {
     fn into(self) -> FileSearchSettings {
         FileSearchSettings {
@@ -78,6 +83,7 @@ pub struct InfoArgs {
     pub file_selection: FileSelection,
 }
 
+
 #[derive(StructOpt)]
 pub struct RenameArgs {
     /// Rename template
@@ -87,11 +93,13 @@ pub struct RenameArgs {
     pub file_selection: FileSelection,
 }
 
+
 #[derive(StructOpt)]
 pub struct SearchArgs {
     /// Print results as json
     #[structopt(long)]
     pub json: bool,
+    /// Attribute to sort output by
     #[structopt(long)]
     pub sort_by: Option<String>,
     /// Print absolute path instead of relative
@@ -103,6 +111,7 @@ pub struct SearchArgs {
     /// Limit the number of results
     #[structopt(long)]
     pub limit: Option<usize>,
+    /// Search query
     pub search_terms: Vec<String>,
 }
 
@@ -111,6 +120,6 @@ impl Into<crate::logging::SearchPrintOptions> for &SearchArgs {
         crate::logging::SearchPrintOptions {
             json: self.json,
             info: self.info,
-        }
+       }
     }
 }

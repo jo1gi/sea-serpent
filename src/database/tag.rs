@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 #[derive(Debug)]
 /// Store tag either with key or key-value
 pub enum Tag {
