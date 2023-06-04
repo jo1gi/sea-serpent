@@ -64,7 +64,11 @@ fn remove_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
     for file in get_files(&args.file_selection) {
         for tag in &args.tags {
-            database.remove_tag(&file, tag)?;
+            match database.remove_tag(&file, tag) {
+                // Ignore file not found
+                Ok(_) | Err(database::DatabaseError::FileNotFound(_)) => (),
+                Err(err) => return Err(SeaSerpentError::Database(err)),
+            }
         }
     }
     Ok(())

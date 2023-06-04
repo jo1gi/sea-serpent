@@ -51,18 +51,17 @@ impl Database {
     /// Remove tag from file
     pub fn remove_tag(&mut self, file: &Path, tag: &String) -> Result<(), DatabaseError> {
         let relative_path = find::path_relative_to_db_root(file, &self.root_dir()?)?;
-        self.config.get_alias(tag)
-            .unwrap_or_else(|| vec![tag])
-            .iter()
-            .map(|tag| Tag::new(tag))
-            .for_each(|tag| {
-                log::debug!(
-                    "Removing tag {:?} from {}",
-                    tag.to_string(),
-                    file.to_string_lossy().blue()
-                );
-                self.storage.remove_tag(&relative_path, &tag).unwrap();
-            });
+        let alias = self.config.get_alias(tag);
+        let tags = alias.unwrap_or_else(|| vec![tag]);
+        for unparsed_tag in tags {
+            let parsed_tag = Tag::new(unparsed_tag);
+            log::debug!(
+                "Removing tag {:?} from {}",
+                parsed_tag.to_string(),
+                file.to_string_lossy().blue()
+            );
+            self.storage.remove_tag(&relative_path, &parsed_tag)?;
+        }
         Ok(())
     }
 
