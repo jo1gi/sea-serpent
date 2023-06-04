@@ -33,7 +33,7 @@ pub enum Command {
 #[derive(StructOpt)]
 pub struct AddArgs {
     #[structopt(short, long)]
-    pub tag: String,
+    pub tags: Vec<String>,
     #[structopt(flatten)]
     pub file_selection: FileSelection,
 }
@@ -53,6 +53,7 @@ pub struct FileSelection {
     #[structopt(long)]
     pub stdin: bool,
     /// List of files
+    #[structopt(short, long)]
     pub files: Vec<PathBuf>,
 }
 

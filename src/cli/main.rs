@@ -52,7 +52,9 @@ fn get_files(file_selection: &FileSelection) -> Vec<PathBuf> {
 fn add_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
     for file in get_files(&args.file_selection) {
-        database.add_tag(&file, &args.tag)?;
+        for tag in &args.tags {
+            database.add_tag(&file, tag)?;
+        }
     }
     Ok(())
 }
@@ -61,7 +63,9 @@ fn add_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
 fn remove_tags(args: &AddArgs) -> Result<(), SeaSerpentError> {
     let mut database = database::Database::load_from_current_dir()?;
     for file in get_files(&args.file_selection) {
-        database.remove_tag(&file, &args.tag)?;
+        for tag in &args.tags {
+            database.remove_tag(&file, tag)?;
+        }
     }
     Ok(())
 }
