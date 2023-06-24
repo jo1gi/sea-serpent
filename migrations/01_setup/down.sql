@@ -1,3 +1,3 @@
-DROP TABLE tags
-DROP TABLE attributes
-DROP TABLE files
+DROP TABLE tags;
+DROP TABLE attributes;
+DROP TABLE files;
