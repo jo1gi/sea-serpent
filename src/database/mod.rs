@@ -15,7 +15,7 @@ pub use tag::Tag;
 pub struct Database {
     path: PathBuf,
     config: config::DatabaseConfig,
-    storage: storage::DatabaseData,
+    storage: storage::DatabaseStorage,
 }
 
 
@@ -87,7 +87,7 @@ impl Database {
         Ok(Self {
             path: find::get_full_path(&database_dir)?,
             config: Default::default(),
-            storage: storage::DatabaseData::load(&database_dir)?,
+            storage: storage::DatabaseStorage::load(&database_dir)?,
         })
     }
 
@@ -96,7 +96,7 @@ impl Database {
         log::debug!("Loading database from {}", path.to_string_lossy().blue());
         Ok(Self {
             config: config::get_database_config(&path),
-            storage: storage::DatabaseData::load(&path)?,
+            storage: storage::DatabaseStorage::load(&path)?,
             path: find::get_full_path(&path)?,
         })
     }

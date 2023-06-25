@@ -26,7 +26,7 @@ const DATA_FILE: &'static str = "data.sqlite";
 const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 
-pub struct DatabaseData {
+pub struct DatabaseStorage {
     /// Connection to sqlite database
     connection: SqliteConnection,
 }
@@ -45,7 +45,7 @@ fn create_data_path(database_path: &Path) -> PathBuf {
     database_path.join(DATA_FILE)
 }
 
-impl DatabaseData {
+impl DatabaseStorage {
 
 
     /// Load data file from disk
@@ -292,16 +292,16 @@ mod test {
     use diesel::Connection;
     use diesel_migrations::MigrationHarness;
 
-    fn create_memory_db() -> super::DatabaseData {
+    fn create_memory_db() -> super::DatabaseStorage {
         let connection = diesel::sqlite::SqliteConnection::establish(":memory:")
             .unwrap();
-        let mut data = super::DatabaseData { connection };
+        let mut data = super::DatabaseStorage { connection };
         data.connection.revert_all_migrations(super::MIGRATIONS).unwrap();
         data.connection.run_pending_migrations(super::MIGRATIONS).unwrap();
         return data;
     }
 
-    fn file_contains(data: &mut super::DatabaseData, path: &super::Path, tag: &String) -> bool {
+    fn file_contains(data: &mut super::DatabaseStorage, path: &super::Path, tag: &String) -> bool {
         data.get_file_from_path(path).unwrap().tags.contains(tag)
     }
 
