@@ -4,7 +4,7 @@ mod error;
 mod find;
 mod tag;
 
-use std::path::{Path, PathBuf};
+use std::{path::{Path, PathBuf}, cmp::Ordering};
 use colored::Colorize;
 pub use find::find_database_from_current_dir;
 pub use error::DatabaseError;
@@ -146,8 +146,7 @@ impl Database {
     /// Search for files matching `search_term`
     pub fn search(&mut self, search_term: crate::search::SearchExpression) -> Result<Vec<SearchResult>, DatabaseError> {
         let mut results = self.storage.search(search_term)?;
-        // TODO Remove clone
-        results.sort_by_key(|result| result.path.clone());
+        results.sort_by(sort_by_path);
         Ok(results)
     }
 
@@ -177,6 +176,10 @@ fn get_first_attribute<'a>(result: &'a SearchResult, key: &str) -> Option<&'a St
     result.attributes.iter()
         .find(|(x, _)| key == x)
         .map(|(_, value)| value)
+}
+
+fn sort_by_path(a: &SearchResult, b: &SearchResult) -> Ordering {
+    a.path.cmp(&b.path)
 }
 
 pub fn sort_by_attribute(results: &mut Vec<SearchResult>, key: &str) {
