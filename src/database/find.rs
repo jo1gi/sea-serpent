@@ -42,7 +42,7 @@ pub fn find_database_from_current_dir() -> Result<PathBuf, DatabaseError> {
 /// Returns the path of `path` relative to the database root directory
 pub fn path_relative_to_db_root(path: &Path, database_root: &Path) -> Result<PathBuf, DatabaseError> {
     log::trace!("Getting relative path of {}", path.to_string_lossy().blue());
-    get_full_path(path)?
+    absolute_path(path)?
         .strip_prefix(database_root)
         .or_else(|_| Err(DatabaseError::FileNotFound(path.to_path_buf())))
         .map(|x| x.to_path_buf())
@@ -53,4 +53,14 @@ pub fn get_full_path(path: &Path) -> Result<PathBuf, DatabaseError> {
     // TODO Replace with std::path::absolute when it becomes available
     std::fs::canonicalize(path)
         .map_err(|_| DatabaseError::FileNotFound(path.to_path_buf()))
+}
+
+/// Get absolute path
+pub fn absolute_path(path: &Path) -> Result<PathBuf, DatabaseError> {
+    if path.is_absolute() {
+        return Ok(path.to_path_buf());
+    }
+    std::env::current_dir()
+        .or(Err(DatabaseError::CurrentDirNotFound))
+        .map(|current_dir| current_dir.join(path))
 }
