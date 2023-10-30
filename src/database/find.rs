@@ -60,7 +60,10 @@ pub fn absolute_path(path: &Path) -> Result<PathBuf, DatabaseError> {
     if path.is_absolute() {
         return Ok(path.to_path_buf());
     }
-    std::env::current_dir()
-        .or(Err(DatabaseError::CurrentDirNotFound))
-        .map(|current_dir| current_dir.join(path))
+    let full_path =std::env::current_dir()
+        .or(Err(DatabaseError::CurrentDirNotFound))?
+        .join(path)
+        .components()
+        .collect();
+    return Ok(full_path);
 }
