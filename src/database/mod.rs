@@ -114,8 +114,13 @@ impl Database {
         // Remove files that does not exist
         let files_to_remove: Vec<PathBuf> = self.storage.get_all_files()?
             .into_iter()
-            .filter_map(|result| self.get_absolute_path(&result.path).ok())
-            .filter(|path| !path.exists())
+            .filter(|result| {
+                self.get_absolute_path(&result.path)
+                    .ok()
+                    .map(|path| !path.exists())
+                    .unwrap_or(false)
+            })
+            .map(|result| result.path)
             .collect();
         for file in files_to_remove {
             log::debug!("Removing {} from database", file.to_string_lossy().blue());
